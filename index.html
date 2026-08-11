@@ -466,34 +466,41 @@ function fit(){
   vs=Math.min(r.width/W,r.height/H)*0.94;
   vx=(r.width-W*vs)/2;vy=(r.height-H*vs)/2;render();
 }
+/* カードのシルエット（枠のアルファ＋窓の穴）を専用キャンバスに作る */
+let silCv=null,silKey='';
+function cardSilhouette(){
+  if(!frameImg)return null;
+  const key=frameImg.src+'|'+W+'x'+H+'|'+[win.x,win.y,win.w,win.h].join(',');
+  if(silCv&&silKey===key)return silCv;
+  silCv=document.createElement('canvas');silCv.width=W;silCv.height=H;
+  const sc=silCv.getContext('2d');
+  sc.drawImage(frameImg,0,0,W,H);
+  sc.globalCompositeOperation='destination-over';       // 窓の穴も埋める
+  sc.fillStyle='#000';sc.fillRect(win.x,win.y,win.w,win.h);
+  sc.globalCompositeOperation='source-over';
+  silKey=key;return silCv;
+}
 function drawCardBase(c,color){
-  if(!frameImg)return;
-  const wc=workCv.getContext('2d');
-  wc.globalCompositeOperation='source-over';wc.clearRect(0,0,W,H);
-  wc.drawImage(frameImg,0,0,W,H);
-  wc.globalCompositeOperation='destination-over';       // 窓の穴も埋める
-  wc.fillStyle='#000';wc.fillRect(win.x,win.y,win.w,win.h);
-  wc.globalCompositeOperation='source-in';              // カードの形だけ塗る
-  wc.fillStyle=color;wc.fillRect(0,0,W,H);
-  wc.globalCompositeOperation='source-over';
-  c.drawImage(workCv,0,0);
+  const sil=cardSilhouette();if(!sil)return;
+  const tmp=document.createElement('canvas');tmp.width=W;tmp.height=H;
+  const tc=tmp.getContext('2d');
+  tc.drawImage(sil,0,0);
+  tc.globalCompositeOperation='source-in';
+  tc.fillStyle=color;tc.fillRect(0,0,W,H);
+  c.drawImage(tmp,0,0);
 }
 /* カードの形に沿った外周のリング（貼るときの位置合わせ用） */
 function drawCardRing(c,color){
-  if(!frameImg)return;
-  const wc=workCv.getContext('2d');
-  wc.globalCompositeOperation='source-over';wc.clearRect(0,0,W,H);
-  wc.drawImage(frameImg,0,0,W,H);
-  wc.globalCompositeOperation='destination-over';
-  wc.fillStyle='#000';wc.fillRect(win.x,win.y,win.w,win.h);
-  wc.globalCompositeOperation='source-in';
-  wc.fillStyle=color;wc.fillRect(0,0,W,H);
-  // 内側を抜いてリングにする
-  const t=RING_T*W, sx=(W-2*t)/W, sy=(H-2*t)/H;
-  wc.globalCompositeOperation='destination-out';
-  wc.save();wc.translate(t,t);wc.scale(sx,sy);wc.drawImage(workCv,0,0);wc.restore();
-  wc.globalCompositeOperation='source-over';
-  c.drawImage(workCv,0,0);
+  const sil=cardSilhouette();if(!sil)return;
+  const tmp=document.createElement('canvas');tmp.width=W;tmp.height=H;
+  const tc=tmp.getContext('2d');
+  tc.drawImage(sil,0,0);
+  tc.globalCompositeOperation='source-in';
+  tc.fillStyle=color;tc.fillRect(0,0,W,H);
+  const t=RING_T*W;
+  tc.globalCompositeOperation='destination-out';        // 内側を抜いてリングに
+  tc.save();tc.translate(t,t);tc.scale((W-2*t)/W,(H-2*t)/H);tc.drawImage(sil,0,0);tc.restore();
+  c.drawImage(tmp,0,0);
 }
 function drawWhiteCard(c){drawCardBase(c,maskFrameBlack?'#000':'#fff');}
 function drawLayer(c,img,t){
@@ -703,7 +710,7 @@ function composeMask(c){
     drawLayer(c,bgSrc,bgT);c.restore();}
   if(subjSrc){
     if(clipBottom){c.save();c.beginPath();c.rect(0,0,W,R.boxOut[3]*H);c.clip();}
-    if(popUsed&&popCv){
+    if(popUsed&&popCv&&workCv){
       const wc=workCv.getContext('2d');
       wc.globalCompositeOperation='source-over';wc.clearRect(0,0,W,H);
       drawLayer(wc,subjSrc,subjT);
