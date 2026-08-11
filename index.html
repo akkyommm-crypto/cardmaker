@@ -25,7 +25,7 @@ button{font-family:inherit;cursor:pointer;border:0}
 .btn.ghost{background:transparent;border-color:transparent;color:var(--dim);padding:8px 7px}
 .btn.sm{padding:7px 9px;font-size:12px}
 
-#stage{flex:1;position:relative;overflow:hidden;touch-action:none;
+#stage{flex:1;min-height:22dvh;position:relative;overflow:hidden;touch-action:none;
   background:repeating-conic-gradient(#1E1A15 0% 25%,#221D17 0% 50%) 50%/22px 22px}
 #view{position:absolute;inset:0;display:block}
 #empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
@@ -34,10 +34,18 @@ button{font-family:inherit;cursor:pointer;border:0}
   display:none;transform:translate(-50%,-50%)}
 
 footer{flex:0 0 auto;background:var(--panel);border-top:1px solid var(--line);
-  padding:8px 10px calc(10px + env(safe-area-inset-bottom));max-height:58dvh;overflow-y:auto}
+  padding:0 10px calc(10px + env(safe-area-inset-bottom));max-height:74dvh;overflow-y:auto;
+  overscroll-behavior:contain}
+.tabs{position:sticky;top:0;background:var(--panel);padding:8px 0 6px;z-index:2}
+footer.closed{max-height:none;overflow:visible}
+footer.closed .panel,footer.closed #hint{display:none}
+footer.closed .tabs{padding-bottom:2px}
+.tabs .btn.on::after{content:' ▾'}
+footer.closed .tabs .btn.on::after{content:' ▴'}
 .bar{display:flex;gap:7px;align-items:center}
 .bar+.bar{margin-top:7px}
 .tabs{display:flex;gap:5px}
+.tabs .btn{min-width:0}
 .tabs .btn{flex:1;text-align:center;padding:9px 2px;font-size:12px}
 .tools{display:flex;gap:6px;flex:1}
 .tools .btn{flex:1;text-align:center;padding:8px 4px;font-size:12px}
@@ -50,6 +58,15 @@ input[type=range]{flex:1;accent-color:var(--amber);min-width:40px}
 label.sl b{color:var(--text);font-variant-numeric:tabular-nums;width:40px;text-align:right;font-size:11px}
 #hint{font-size:11px;color:var(--dim);margin-top:7px;line-height:1.5}
 input[type=file]{display:none}
+details{border:1px solid var(--line);border-radius:8px;padding:7px 9px;margin:6px 0;background:var(--panel2)}
+summary{font-size:12px;color:var(--dim);cursor:pointer;list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::before{content:'▸ ';color:var(--amber)}
+details[open] summary::before{content:'▾ '}
+#ghMsg{color:var(--amber);margin-left:6px}
+.fld span{width:46px;font-size:10px}
+.lab{margin:6px 0 1px}
+.bar+.bar{margin-top:5px}
 .panel{display:none;padding-top:2px}.panel.on{display:block}
 .lab{font-size:11px;color:var(--dim);margin:8px 0 2px;letter-spacing:.06em;display:flex;align-items:center;gap:4px}
 
@@ -99,21 +116,23 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
 
   <footer>
     <div class="bar tabs">
-      <button class="btn" data-tab="mat">素材</button>
-      <button class="btn on" data-tab="place">配置</button>
-      <button class="btn" data-tab="win">窓</button>
+      <button class="btn on" data-tab="txt">カード</button>
+      <button class="btn" data-tab="place">配置</button>
       <button class="btn" data-tab="pop">はみ出し</button>
-      <button class="btn" data-tab="txt">文字</button>
+      <button class="btn" data-tab="win">窓</button>
+      <button class="btn" data-tab="mat">素材</button>
     </div>
 
     <!-- 素材 -->
     <div class="panel" id="pMat">
-      <div class="lab">GitHubの素材
-        <button class="btn ghost sm" id="ghLoad">読み込む</button>
-        <span id="ghMsg" style="font-size:11px;color:var(--dim)"></span></div>
-      <div class="fld"><span>リポジトリ</span><input type="text" id="ghRepo" placeholder="akkyommm-crypto/card-assets"></div>
-      <div class="fld"><span>ブランチ</span><input type="text" id="ghBranch" placeholder="main" style="flex:1">
-        <input type="text" id="ghPath" placeholder="assets（無ければ空欄）" style="flex:1"></div>
+      <details id="ghBox">
+        
+        <summary>別のリポジトリから読み込む（普段は不要） <span id="ghMsg"></span></summary>
+        <div class="fld"><span>リポジトリ</span><input type="text" id="ghRepo" placeholder="ユーザー名/リポジトリ名"></div>
+        <div class="fld"><span>ブランチ</span><input type="text" id="ghBranch" placeholder="main" style="flex:1">
+          <input type="text" id="ghPath" placeholder="assets" style="flex:1"></div>
+        <div class="bar" style="margin-top:6px"><button class="btn sm" id="ghLoad">読み込む</button></div>
+      </details>
 
       <div class="lab">カード枠
         <button class="btn ghost sm" id="addFrame">＋追加</button>
@@ -125,22 +144,24 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
         <button class="btn ghost sm" id="delAttr">削除</button>
         <button class="btn ghost sm" id="noAttr">使わない</button></div>
       <div class="strip" id="sAttr"></div>
+      <details><summary>属性の位置と大きさ</summary>
       <div class="bar">
         <label class="sl">大きさ<input type="range" id="aSz" min="30" max="220" value="100"><b id="aSzv">100</b></label>
         <label class="sl">横<input type="range" id="aX" min="700" max="990" value="884"><b id="aXv">.884</b></label>
         <label class="sl">縦<input type="range" id="aY" min="0" max="300" value="81"><b id="aYv">.081</b></label>
-      </div>
+      </div></details>
 
       <div class="lab">魔法・罠の種類アイコン
         <button class="btn ghost sm" id="addProp">＋追加</button>
         <button class="btn ghost sm" id="delProp">削除</button>
         <button class="btn ghost sm" id="noProp">使わない</button></div>
       <div class="strip" id="sProp"></div>
+      <details><summary>種類アイコンの位置と大きさ</summary>
       <div class="bar">
         <label class="sl">大きさ<input type="range" id="pSz" min="30" max="220" value="100"><b id="pSzv">100</b></label>
         <label class="sl">横<input type="range" id="pX" min="400" max="990" value="860"><b id="pXv">.860</b></label>
         <label class="sl">縦<input type="range" id="pY" min="60" max="900" value="150"><b id="pYv">.150</b></label>
-      </div>
+      </div></details>
 
       <div class="lab">レベル星
         <button class="btn ghost sm" id="addStar">＋追加</button>
@@ -151,15 +172,18 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
         <label class="sl">大きさ<input type="range" id="stSz" min="30" max="220" value="100"><b id="stSzv">100</b></label>
       </div>
       <div class="bar">
-        <label class="sl">縦<input type="range" id="stY" min="0" max="400" value="150"><b id="stYv">.150</b></label>
-        <label class="sl">間隔<input type="range" id="stG" min="40" max="180" value="100"><b id="stGv">100</b></label>
         <label class="chk"><input type="checkbox" id="stLeft">左から</label>
         <label class="chk"><input type="checkbox" id="stUnder">絵の下</label>
       </div>
+      <details><summary>星の位置と間隔</summary>
+      <div class="bar">
+        <label class="sl">縦<input type="range" id="stY" min="0" max="400" value="150"><b id="stYv">.150</b></label>
+        <label class="sl">間隔<input type="range" id="stG" min="40" max="180" value="100"><b id="stGv">100</b></label>
+      </div></details>
     </div>
 
     <!-- 配置 -->
-    <div class="panel on" id="pPlace">
+    <div class="panel" id="pPlace">
       <div class="bar"><label class="sl">大きさ<input type="range" id="sc" min="5" max="400" value="100"><b id="scv">100%</b></label></div>
       <div class="bar"><label class="sl">回転<input type="range" id="rot" min="-180" max="180" value="0"><b id="rotv">0°</b></label></div>
       <div class="bar"><label class="sl">枠の濃さ<input type="range" id="fo" min="0" max="100" value="100"><b id="fov">100%</b></label></div>
@@ -205,10 +229,36 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
     </div>
 
     <!-- 文字 -->
-    <div class="panel" id="pTxt">
-      <div class="bar">
-        <button class="btn sm on" id="kMon">モンスター</button>
-        <button class="btn sm" id="kST">魔法・罠</button>
+    <div class="panel on" id="pTxt">
+      <div class="lab">カードの種類（枠も自動で切り替わります）</div>
+      <div class="bar" style="overflow-x:auto">
+        <button class="btn sm" data-kind="normal">通常</button>
+        <button class="btn sm on" data-kind="effect">効果</button>
+        <button class="btn sm" data-kind="ritual">儀式</button>
+        <button class="btn sm" data-kind="fusion">融合</button>
+        <button class="btn sm" data-kind="synchro">シンクロ</button>
+        <button class="btn sm" data-kind="xyz">エクシーズ</button>
+        <button class="btn sm" data-kind="token">トークン</button>
+        <button class="btn sm" data-kind="spell">魔法</button>
+        <button class="btn sm" data-kind="trap">罠</button>
+      </div>
+      <div class="bar" id="propRow" style="overflow-x:auto" hidden></div>
+
+      <div id="attrWrap">
+        <div class="lab">属性</div>
+        <div class="bar" style="overflow-x:auto">
+          <button class="btn sm" data-attr="light">光</button>
+          <button class="btn sm" data-attr="dark">闇</button>
+          <button class="btn sm" data-attr="fire">炎</button>
+          <button class="btn sm" data-attr="water">水</button>
+          <button class="btn sm" data-attr="wind">風</button>
+          <button class="btn sm" data-attr="earth">地</button>
+          <button class="btn sm" data-attr="divine">神</button>
+          <button class="btn sm" data-attr="">なし</button>
+        </div>
+      </div>
+      <div id="lvWrap" class="bar">
+        <label class="sl">レベル<input type="range" id="lvN" min="0" max="13" value="4"><b id="lvNv">4</b></label>
       </div>
       <div class="fld"><span>カード名</span><input type="text" id="tName" placeholder="氷結界の龍 エクハジャール"></div>
       <div class="fld"><span>種族欄</span><input type="text" id="tType" placeholder="【ドラゴン族／シンクロ／効果】 / 【魔法カード】"></div>
@@ -238,7 +288,7 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
       </div>
     </div>
 
-    <div id="hint">配置＝1本指で移動・2本指で拡大回転／窓＝ドラッグ／はみ出し＝塗った所が枠の上に出ます。</div>
+    <div id="hint">カード＝種類や文字／配置＝1本指で移動・2本指で拡大回転／はみ出し＝「全面に出す」でイラストがカード一面に。</div>
   </footer>
 </div>
 
@@ -293,7 +343,7 @@ let il={x:0,y:0,s:1,rot:0};
 let win={x:0,y:0,w:0,h:0};
 let popCv=null,popCtx=null,workCv=null;
 let vs=1,vx=0,vy=0;
-let tab='place',tool='brush',ink='w',brush=70,frameOp=1;
+let tab='txt',tool='brush',ink='w',brush=70,frameOp=1;
 let jpFont='mincho',tcol='#fff';
 let attrSz=1,attrX=R.attr.x,attrY=R.attr.y;
 let stN=0,stSz=1,stY=R.star.y,stG=1,stLeft=false;
@@ -324,7 +374,7 @@ function idbGet(k){return new Promise(function(res){
 });}
 function persist(){
   const loc=function(a){return a.filter(function(i){return !i._remote;})
-                          .map(function(i){return i.src;});};
+                          .map(function(i){return {src:i.src,name:i._name||''};});};
   idbSet('frames',loc(frames));idbSet('attrs',loc(attrs));
   idbSet('stars',loc(stars));idbSet('props',loc(props));
 }
@@ -514,9 +564,11 @@ function compose(c){
   drawText(c);
 }
 function render(){
+  vctx.setTransform(1,0,0,1,0,0);
+  vctx.clearRect(0,0,view.width,view.height);
+  const d=Math.min(devicePixelRatio||1,2);
+  vctx.setTransform(d,0,0,d,0,0);
   if(!W)return;
-  const r=stage.getBoundingClientRect();
-  vctx.clearRect(0,0,r.width,r.height);
   vctx.save();vctx.translate(vx,vy);vctx.scale(vs,vs);
   vctx.fillStyle='#000';vctx.fillRect(0,0,W,H);
   compose(vctx);
@@ -614,13 +666,45 @@ $('#winAuto').onclick=function(){
 /* ---------- 素材 ---------- */
 function toDataURL(f){return new Promise(function(res){
   const r=new FileReader();r.onload=function(){res(r.result);};r.readAsDataURL(f);});}
-function mkImg(src,remote){return new Promise(function(res){
+function mkImg(src,remote,name){return new Promise(function(res){
   const im=new Image();
-  if(remote)im.crossOrigin='anonymous';
-  im.onload=function(){im._remote=!!remote;res(im);};
+  if(remote&&/^https?:/i.test(src))im.crossOrigin='anonymous';
+  im.onload=function(){im._remote=!!remote;im._name=name||'';res(im);};
   im.onerror=function(){res(null);};im.src=src;});}
 
-/* GitHub から素材を読む（フォルダに置くだけで増える） */
+/* 同じ場所に置いてある素材を起動時に読む（設定不要） */
+const BUILTIN={
+  frames:['frame_normal.png','frame_effect.png','frame_ritual.png','frame_fusion.png',
+          'frame_synchro.png','frame_xyz.png','frame_token.png','frame_spell.png','frame_trap.png'],
+  attrs :['attr_light.png','attr_dark.png','attr_fire.png','attr_water.png','attr_wind.png',
+          'attr_earth.png','attr_divine.png','attr_spell.png','attr_trap.png'],
+  stars :['star_level.png','star_rank.png'],
+  props :['prop_1_quickplay.png','prop_2_continuous.png','prop_3_equip.png',
+          'prop_4_field.png','prop_5_ritual.png','prop_6_counter.png']
+};
+async function loadBuiltin(){
+  const cats=[['frames',frames,'#sFrame',pickFrame],['attrs',attrs,'#sAttr',pickAttr],
+              ['stars',stars,'#sStar',pickStar],['props',props,'#sProp',pickProp]];
+  let n=0;
+  for(const [dir,arr,strip,pick] of cats){
+    const list=BUILTIN[dir];
+    let base=null;
+    for(const pf of ['assets/'+dir+'/','assets/',dir+'/','']){
+      const im=await mkImg(pf+list[0],true,list[0]);
+      if(im){base=pf;if(!arr.some(function(x){return x._name===list[0];})){arr.push(im);n++;}break;}
+    }
+    if(base===null)continue;
+    for(let i=1;i<list.length;i++){
+      if(arr.some(function(x){return x._name===list[i];}))continue;
+      const im=await mkImg(base+list[i],true,list[i]);
+      if(im){arr.push(im);n++;}
+    }
+    rebuild(arr,strip,pick);
+  }
+  return n;
+}
+
+/* GitHub から素材を読む（別のリポジトリを使いたいとき用） */
 async function ghList(repo,branch,path){
   try{
     const u='https://api.github.com/repos/'+repo+'/contents/'+path+'?ref='+encodeURIComponent(branch);
@@ -667,7 +751,7 @@ async function ghLoadAll(quiet){
     if(!files)continue;
     for(const f of files){
       if(c[1].some(function(i){return i.src===f.download_url;}))continue;
-      const im=await mkImg(f.download_url,true);
+      const im=await mkImg(f.download_url,true,f.name);
       if(im){c[1].push(im);n++;}
     }
     rebuild(c[1],c[2],c[3]);
@@ -683,7 +767,7 @@ async function ghLoadAll(quiet){
         if(k<0)continue;
         const c=cats[k];
         if(c[1].some(function(i){return i.src===f.download_url;}))continue;
-        const im=await mkImg(f.download_url,true);
+        const im=await mkImg(f.download_url,true,f.name);
         if(im){c[1].push(im);n++;got++;}
       }
       if(got){hit=1;cats.forEach(function(c){rebuild(c[1],c[2],c[3]);});break;}
@@ -698,7 +782,7 @@ async function ghLoadAll(quiet){
 $('#ghLoad').onclick=function(){ghLoadAll(false);};
 async function addFiles(files,arr,strip,pick){
   for(const f of Array.from(files)){
-    const u=await toDataURL(f),im=await mkImg(u);
+    const u=await toDataURL(f),im=await mkImg(u,false,f.name);
     if(im)arr.push(im);
   }
   rebuild(arr,strip,pick);persist();pick(arr.length-1);
@@ -849,7 +933,15 @@ stage.addEventListener('wheel',function(e){
 },{passive:false});
 
 /* ---------- UI ---------- */
+const footerEl=document.querySelector('footer');
 document.querySelectorAll('[data-tab]').forEach(function(b){b.onclick=function(){
+  const same=(tab===b.dataset.tab);
+  if(same&&!footerEl.classList.contains('closed')){
+    footerEl.classList.add('closed');       // 同じタブをもう一度押すと畳む
+    setTimeout(function(){resize();fit();},30);
+    return;
+  }
+  footerEl.classList.remove('closed');
   document.querySelectorAll('[data-tab]').forEach(function(o){o.classList.remove('on');});
   b.classList.add('on');tab=b.dataset.tab;lasso=[];dot.style.display='none';
   const map={mat:'#pMat',place:'#pPlace',win:'#pWin',pop:'#pPop',txt:'#pTxt'};
@@ -875,7 +967,7 @@ sl('#aY','#aYv',function(v){attrY=v/1000;},function(v){return '.'+v;});
 sl('#pSz','#pSzv',function(v){propSz=v/100;});
 sl('#pX','#pXv',function(v){propX=v/1000;},function(v){return '.'+v;});
 sl('#pY','#pYv',function(v){propY=v/1000;},function(v){return '.'+v;});
-sl('#stN','#stNv',function(v){stN=v;});
+$('#stN').oninput=function(e){setLevel(+e.target.value);};
 sl('#stSz','#stSzv',function(v){stSz=v/100;});
 sl('#stY','#stYv',function(v){stY=v/1000;},function(v){return '.'+v;});
 sl('#stG','#stGv',function(v){stG=v/100;});
@@ -912,15 +1004,88 @@ $('#cBlack').onclick=function(){tcol='#000';
   $('#cBlack').classList.add('on');$('#cWhite').classList.remove('on');render();};
 $('#cWhite').onclick=function(){tcol='#fff';
   $('#cWhite').classList.add('on');$('#cBlack').classList.remove('on');render();};
-function setKind(k){
-  kind=k;
-  $('#kMon').classList.toggle('on',k==='monster');
-  $('#kST').classList.toggle('on',k==='st');
-  $('#fldAtk').style.display=(k==='st')?'none':'';
+function findByName(arr,words){
+  for(const w of words){
+    for(let i=0;i<arr.length;i++){
+      const n=(arr[i]._name||'').toLowerCase();
+      if(n.indexOf(w)>=0)return i;
+    }
+  }
+  return -1;
+}
+const PROP_SETS={
+  spell:[['none','通常'],['quickplay','速攻'],['continuous','永続'],
+         ['equip','装備'],['field','フィールド'],['ritual','儀式']],
+  trap :[['none','通常'],['continuous','永続'],['counter','カウンター']]
+};
+function buildPropRow(t){
+  const row=$('#propRow');
+  if(t!=='spell'&&t!=='trap'){row.hidden=true;row.innerHTML='';return;}
+  row.hidden=false;row.innerHTML='';
+  PROP_SETS[t].forEach(function(pr,idx){
+    const b=document.createElement('button');
+    b.className='btn sm'+(idx===0?' on':'');
+    b.textContent=pr[1];
+    b.onclick=function(){
+      row.querySelectorAll('button').forEach(function(o){o.classList.remove('on');});
+      b.classList.add('on');
+      if(pr[0]==='none'){pi=-1;mark('#sProp',-1);}
+      else{const k=findByName(props,[pr[0]]);if(k>=0)pickProp(k);}
+      render();
+    };
+    row.appendChild(b);
+  });
+  pi=-1;mark('#sProp',-1);
+}
+function setCardType(t){
+  document.querySelectorAll('[data-kind]').forEach(function(b){
+    b.classList.toggle('on',b.dataset.kind===t);});
+  kind=(t==='spell'||t==='trap')?'st':'monster';
+  $('#fldAtk').style.display=(kind==='st')?'none':'';
+
+  const fi2=findByName(frames,[t]);
+  if(fi2>=0)pickFrame(fi2);
+
+  buildPropRow(t);
+  $('#attrWrap').style.display=(t==='spell'||t==='trap')?'none':'';
+  $('#lvWrap').style.display=(t==='spell'||t==='trap')?'none':'';
+  if(t==='spell'||t==='trap'){
+    const ai2=findByName(attrs,[t]);
+    if(ai2>=0)pickAttr(ai2);
+    setLevel(0);
+    if(!$('#tType').value.trim())
+      $('#tType').value=(t==='spell')?'【魔法カード】':'【罠カード】';
+  }else{
+    const si2=findByName(stars,[t==='xyz'?'rank':'level']);
+    if(si2>=0)pickStar(si2);
+    stLeft=(t==='xyz');$('#stLeft').checked=stLeft;
+    $('#lvWrap').querySelector('.sl').firstChild.textContent=(t==='xyz')?'ランク':'レベル';
+    if(stN===0)setLevel(4);
+    pi=-1;mark('#sProp',-1);
+  }
   render();
 }
-$('#kMon').onclick=function(){setKind('monster');};
-$('#kST').onclick=function(){setKind('st');};
+document.querySelectorAll('[data-kind]').forEach(function(b){
+  b.onclick=function(){setCardType(b.dataset.kind);};});
+
+function markAttrBtn(key){
+  document.querySelectorAll('[data-attr]').forEach(function(b){
+    b.classList.toggle('on',b.dataset.attr===key);});
+}
+document.querySelectorAll('[data-attr]').forEach(function(b){b.onclick=function(){
+  const k=b.dataset.attr;
+  markAttrBtn(k);
+  if(!k){ai=-1;mark('#sAttr',-1);}
+  else{const j=findByName(attrs,[k]);if(j>=0)pickAttr(j);}
+  render();};});
+
+function setLevel(v){
+  stN=v;
+  $('#lvN').value=v;$('#lvNv').textContent=v;
+  $('#stN').value=v;$('#stNv').textContent=v;
+  render();
+}
+$('#lvN').oninput=function(e){setLevel(+e.target.value);};
 $('#fit').onclick=fit;
 
 /* ---------- 書き出し ---------- */
@@ -950,12 +1115,15 @@ $('#sheet').onclick=function(e){if(e.target===$('#sheet'))$('#sheet').classList.
   for(const s of sets){
     const list=await idbGet(s[0]);
     if(list&&list.length){
-      for(const u of list){const im=await mkImg(u);if(im)s[1].push(im);}
+      for(const u of list){const o=(typeof u==='string')?{src:u,name:''}:u;
+        const im=await mkImg(o.src,false,o.name);if(im)s[1].push(im);}
       rebuild(s[1],s[2],s[3]);
     }
   }
+  await loadBuiltin();
   if(frames.length)pickFrame(0);
   if(attrs.length)mark('#sAttr',-1);
+  setCardType('effect');
   const gh=await idbGet('gh');
   if(gh&&gh.repo){
     $('#ghRepo').value=gh.repo;
@@ -963,9 +1131,16 @@ $('#sheet').onclick=function(e){if(e.target===$('#sheet'))$('#sheet').classList.
     $('#ghPath').value=gh.path||'assets';
     ghLoadAll(true);
   }
-  resize();
+  document.querySelector('footer').classList.add('closed');
+  resize();fit();
 })();
 addEventListener('resize',resize);
+addEventListener('orientationchange',function(){setTimeout(fitResize,120);});
+function fitResize(){resize();fit();}
+if(window.ResizeObserver){
+  let t=null;
+  new ResizeObserver(function(){clearTimeout(t);t=setTimeout(fitResize,60);}).observe(stage);
+}
 resize();
 </script>
 </body>
