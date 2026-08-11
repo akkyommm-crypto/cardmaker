@@ -113,7 +113,7 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
         <span id="ghMsg" style="font-size:11px;color:var(--dim)"></span></div>
       <div class="fld"><span>リポジトリ</span><input type="text" id="ghRepo" placeholder="akkyommm-crypto/card-assets"></div>
       <div class="fld"><span>ブランチ</span><input type="text" id="ghBranch" placeholder="main" style="flex:1">
-        <input type="text" id="ghPath" placeholder="assets" style="flex:1"></div>
+        <input type="text" id="ghPath" placeholder="assets（無ければ空欄）" style="flex:1"></div>
 
       <div class="lab">カード枠
         <button class="btn ghost sm" id="addFrame">＋追加</button>
@@ -128,7 +128,18 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
       <div class="bar">
         <label class="sl">大きさ<input type="range" id="aSz" min="30" max="220" value="100"><b id="aSzv">100</b></label>
         <label class="sl">横<input type="range" id="aX" min="700" max="990" value="884"><b id="aXv">.884</b></label>
-        <label class="sl">縦<input type="range" id="aY" min="0" max="300" value="79"><b id="aYv">.079</b></label>
+        <label class="sl">縦<input type="range" id="aY" min="0" max="300" value="81"><b id="aYv">.081</b></label>
+      </div>
+
+      <div class="lab">魔法・罠の種類アイコン
+        <button class="btn ghost sm" id="addProp">＋追加</button>
+        <button class="btn ghost sm" id="delProp">削除</button>
+        <button class="btn ghost sm" id="noProp">使わない</button></div>
+      <div class="strip" id="sProp"></div>
+      <div class="bar">
+        <label class="sl">大きさ<input type="range" id="pSz" min="30" max="220" value="100"><b id="pSzv">100</b></label>
+        <label class="sl">横<input type="range" id="pX" min="400" max="990" value="860"><b id="pXv">.860</b></label>
+        <label class="sl">縦<input type="range" id="pY" min="60" max="900" value="150"><b id="pYv">.150</b></label>
       </div>
 
       <div class="lab">レベル星
@@ -140,9 +151,10 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
         <label class="sl">大きさ<input type="range" id="stSz" min="30" max="220" value="100"><b id="stSzv">100</b></label>
       </div>
       <div class="bar">
-        <label class="sl">縦<input type="range" id="stY" min="0" max="400" value="142"><b id="stYv">.142</b></label>
+        <label class="sl">縦<input type="range" id="stY" min="0" max="400" value="150"><b id="stYv">.150</b></label>
         <label class="sl">間隔<input type="range" id="stG" min="40" max="180" value="100"><b id="stGv">100</b></label>
         <label class="chk"><input type="checkbox" id="stLeft">左から</label>
+        <label class="chk"><input type="checkbox" id="stUnder">絵の下</label>
       </div>
     </div>
 
@@ -151,6 +163,15 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
       <div class="bar"><label class="sl">大きさ<input type="range" id="sc" min="5" max="400" value="100"><b id="scv">100%</b></label></div>
       <div class="bar"><label class="sl">回転<input type="range" id="rot" min="-180" max="180" value="0"><b id="rotv">0°</b></label></div>
       <div class="bar"><label class="sl">枠の濃さ<input type="range" id="fo" min="0" max="100" value="100"><b id="fov">100%</b></label></div>
+      <div class="lab">イラストの上に重ねるパネル</div>
+      <div class="bar">
+        <label class="chk"><input type="checkbox" id="pnBox">効果欄</label>
+        <label class="sl"><input type="range" id="pnBoxA" min="0" max="100" value="72"><b id="pnBoxAv">72%</b></label>
+      </div>
+      <div class="bar">
+        <label class="chk"><input type="checkbox" id="pnPlate">名前欄（板も出す）</label>
+        <label class="sl"><input type="range" id="pnPlateA" min="0" max="100" value="72"><b id="pnPlateAv">72%</b></label>
+      </div>
     </div>
 
     <!-- 窓 -->
@@ -177,17 +198,26 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
         <label class="sl">太さ<input type="range" id="size" min="6" max="260" value="70"><b id="szv">70</b></label>
         <button class="btn ghost sm" id="undo" disabled>戻す</button>
       </div>
+      <div class="bar">
+        <button class="btn sm" id="popAll">全面に出す</button>
+        <button class="btn ghost sm" id="popNone">全部消す</button>
+      </div>
     </div>
 
     <!-- 文字 -->
     <div class="panel" id="pTxt">
+      <div class="bar">
+        <button class="btn sm on" id="kMon">モンスター</button>
+        <button class="btn sm" id="kST">魔法・罠</button>
+      </div>
       <div class="fld"><span>カード名</span><input type="text" id="tName" placeholder="氷結界の龍 エクハジャール"></div>
-      <div class="fld"><span>種族欄</span><input type="text" id="tType" placeholder="【ドラゴン族／シンクロ／効果】"></div>
+      <div class="fld"><span>種族欄</span><input type="text" id="tType" placeholder="【ドラゴン族／シンクロ／効果】 / 【魔法カード】"></div>
       <div class="fld" style="align-items:flex-start"><span>効果</span><textarea id="tEff" placeholder="チューナー＋チューナー以外のモンスター1体以上&#10;このカード名の①…"></textarea></div>
-      <div class="fld"><span>ATK / DEF</span>
+      <div class="fld" id="fldAtk"><span>ATK / DEF</span>
         <input type="text" id="tAtk" placeholder="3000"><input type="text" id="tDef" placeholder="1000"></div>
       <div class="fld"><span>番号</span><input type="text" id="tNum" placeholder="UT01-JP005">
-        <label class="chk"><input type="checkbox" id="numLeft">左下</label></div>
+        <label class="chk"><input type="checkbox" id="numLeft">左下</label>
+        <label class="chk"><input type="checkbox" id="drawSep" checked>区切り線</label></div>
 
       <div class="lab">書体</div>
       <div class="bar">
@@ -226,6 +256,7 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
 <input type="file" id="fFrame" accept="image/*" multiple>
 <input type="file" id="fAttr" accept="image/*" multiple>
 <input type="file" id="fStar" accept="image/*" multiple>
+<input type="file" id="fProp" accept="image/*" multiple>
 <input type="file" id="fIll" accept="image/*">
 
 <script>
@@ -233,15 +264,21 @@ const $=s=>document.querySelector(s);
 const view=$('#view'),vctx=view.getContext('2d'),stage=$('#stage'),dot=$('#dot');
 
 /* 公式カード（462×674）から実測した配置比率 */
-const R={
-  win :[0.1212,0.1706,0.8788,0.7181],
-  attr:{x:0.8842,y:0.0794,r:0.0465},
-  star:{y:0.1424,r:0.0260,right:0.8593,gap:0.0663},
-  name:{x:0.0823,base:0.1053,size:0.0556},
-  type:{x:0.0779,base:0.7730,size:0.0178},
-  eff :{x:0.0801,base:0.7953,lh:0.0217,w:0.8355,size:0.0142,bottom:0.9036},
-  atk :{right:0.9156,base:0.9332,size:0.0254},
-  num :{right:0.8896,base:0.7344,size:0.0110,lx:0.0180,lbase:0.9974}
+const R={   // 素材の枠（1180x1720）と公式カードから実測した比率
+  win :[0.1254,0.1866,0.8771,0.7017],
+  attr:{x:0.8842,y:0.0805,r:0.0465},
+  star:{y:0.1504,r:0.0260,right:0.8593,gap:0.0663},
+  name:{x:0.0664,base:0.0966,size:0.0535},
+  type:{x:0.0789,base:0.7775,size:0.0178},
+  eff :{x:0.0789,base:0.7998,lh:0.0211,w:0.8399,size:0.0138,
+        bottom:0.9032,bottomST:0.9330},
+  atk :{right:0.9228,base:0.9328,size:0.0246},
+  num :{right:0.8890,base:0.7434,size:0.0110,lx:0.0180,lbase:0.9930},
+  prop:{x:0.8604,y:0.1504,r:0.0228},
+  stline:{x:0.5613,base:0.1719,size:0.0430},
+  sep :{y:0.9091,x0:0.0930,x1:0.9090},
+  boxOut  :[0.0602,0.7413,0.9415,0.9465],   // 効果欄パネルの外形
+  plateOut:[0.0330,0.0105,0.9500,0.1210]    // 名前欄パネルの外形
 };
 const F={
   mincho:'"Hiragino Mincho ProN","Yu Mincho","YuMincho","MS Mincho","Noto Serif JP",serif',
@@ -249,8 +286,8 @@ const F={
   serif :'"Times New Roman",Georgia,"Hiragino Mincho ProN",serif'
 };
 
-let frames=[],attrs=[],stars=[];
-let fi=-1,ai=-1,si=-1;
+let frames=[],attrs=[],stars=[],props=[];
+let fi=-1,ai=-1,si=-1,pi=-1;
 let frameImg=null,illImg=null,W=0,H=0;
 let il={x:0,y:0,s:1,rot:0};
 let win={x:0,y:0,w:0,h:0};
@@ -260,7 +297,11 @@ let tab='place',tool='brush',ink='w',brush=70,frameOp=1;
 let jpFont='mincho',tcol='#fff';
 let attrSz=1,attrX=R.attr.x,attrY=R.attr.y;
 let stN=0,stSz=1,stY=R.star.y,stG=1,stLeft=false;
+let propSz=1,propX=R.prop.x,propY=R.prop.y;
+let kind='monster';   // monster か st（魔法・罠）
 let tdx=0,tdy=0;
+let panelBox=false,panelBoxA=0.72,panelPlate=false,panelPlateA=0.72;
+let starsUnder=false;
 const undoS=[];let lasso=[];
 
 /* ---------- 保存（IndexedDB） ---------- */
@@ -284,7 +325,8 @@ function idbGet(k){return new Promise(function(res){
 function persist(){
   const loc=function(a){return a.filter(function(i){return !i._remote;})
                           .map(function(i){return i.src;});};
-  idbSet('frames',loc(frames));idbSet('attrs',loc(attrs));idbSet('stars',loc(stars));
+  idbSet('frames',loc(frames));idbSet('attrs',loc(attrs));
+  idbSet('stars',loc(stars));idbSet('props',loc(props));
 }
 
 /* ---------- 表示 ---------- */
@@ -337,8 +379,18 @@ function drawText(c){
     c.fillText(nm,R.name.x*W+DX,R.name.base*H+DY);
   }
   const ty=$('#tType').value.trim();
-  if(ty){c.font=(R.type.size*H)+'px '+F[jpFont];
-    c.fillText(ty,R.type.x*W+DX,R.type.base*H+DY);}
+  if(ty){
+    if(kind==='st'){                     // 【魔法カード】はイラストの上・右寄せ
+      c.font=(R.stline.size*H)+'px '+F[jpFont];
+      c.textAlign='right';
+      const rx=(pi>=0&&props[pi]) ? (propX*W-R.prop.r*W*propSz-4) : R.prop.x*W+R.prop.r*W;
+      c.fillText(ty,rx+DX,R.stline.base*H+DY);
+      c.textAlign='left';
+    }else{
+      c.font=(R.type.size*H)+'px '+F[jpFont];
+      c.fillText(ty,R.type.x*W+DX,R.type.base*H+DY);
+    }
+  }
   const ef=$('#tEff').value;
   if(ef.trim()){
     const k=+$('#eSz').value/100;
@@ -346,13 +398,16 @@ function drawText(c){
     for(let n=0;n<16;n++){
       c.font=sz+'px '+F[jpFont];
       lines=wrap(c,ef,R.eff.w*W);
-      if(R.eff.base*H+(lines.length-1)*lh<=R.eff.bottom*H)break;
+      const bot=(kind==='st'?R.eff.bottomST:R.eff.bottom)*H;
+      const tp=(kind==='st'?R.eff.base-0.0150:R.eff.base)*H;
+      if(tp+(lines.length-1)*lh<=bot)break;
       sz*=0.95;lh*=0.95;
     }
-    lines.forEach(function(l,i){c.fillText(l,R.eff.x*W+DX,R.eff.base*H+i*lh+DY);});
+    const top=(kind==='st'?R.eff.base-0.0150:R.eff.base)*H;
+    lines.forEach(function(l,i){c.fillText(l,R.eff.x*W+DX,top+i*lh+DY);});
   }
   const a=$('#tAtk').value.trim(),d=$('#tDef').value.trim();
-  if(a||d){
+  if((a||d)&&kind!=='st'){
     c.font='700 '+(R.atk.size*H)+'px '+F.serif;c.textAlign='right';
     c.fillText((a?'ATK/'+a:'')+(a&&d?'  ':'')+(d?'DEF/'+d:''),R.atk.right*W+DX,R.atk.base*H+DY);
     c.textAlign='left';
@@ -370,7 +425,14 @@ function drawAttr(c){
   const h=d*im.naturalHeight/im.naturalWidth;
   c.drawImage(im,attrX*W-d/2,attrY*H-h/2,d,h);
 }
+function drawProp(c){
+  if(kind!=='st'||pi<0||!props[pi])return;
+  const im=props[pi],d=R.prop.r*2*W*propSz;
+  const h=d*im.naturalHeight/im.naturalWidth;
+  c.drawImage(im,propX*W-d/2,propY*H-h/2,d,h);
+}
 function drawStars(c){
+  if(kind==='st')return;
   if(si<0||!stars[si]||stN<=0)return;
   const im=stars[si],d=R.star.r*2*W*stSz,h=d*im.naturalHeight/im.naturalWidth;
   const gap=R.star.gap*W*stG;
@@ -401,6 +463,21 @@ function buildHole(){
     holeCv=c;
   }catch(e){holeCv=null;}
 }
+function drawPanel(c,r,alpha,tRatio){
+  if(!frameImg)return;
+  const fw=frameImg.naturalWidth,fh=frameImg.naturalHeight;
+  const sx=r[0]*fw,sy=r[1]*fh,sw=(r[2]-r[0])*fw,sh=(r[3]-r[1])*fh;
+  const dx=r[0]*W,dy=r[1]*H,dw=(r[2]-r[0])*W,dh=(r[3]-r[1])*H;
+  c.globalAlpha=alpha;
+  c.drawImage(frameImg,sx,sy,sw,sh,dx,dy,dw,dh);
+  // ふちは透けさせない
+  const t=tRatio*W, ts=tRatio*fw;
+  c.globalAlpha=1;
+  c.drawImage(frameImg,sx,sy,sw,ts,dx,dy,dw,t);                       // 上
+  c.drawImage(frameImg,sx,sy+sh-ts,sw,ts,dx,dy+dh-t,dw,t);            // 下
+  c.drawImage(frameImg,sx,sy,ts,sh,dx,dy,t,dh);                       // 左
+  c.drawImage(frameImg,sx+sw-ts,sy,ts,sh,dx+dw-t,dy,t,dh);            // 右
+}
 function compose(c){
   c.clearRect(0,0,W,H);
   if(illImg&&win.w>0){
@@ -417,7 +494,7 @@ function compose(c){
     }
   }
   if(frameImg){c.globalAlpha=frameOp;c.drawImage(frameImg,0,0,W,H);c.globalAlpha=1;}
-  drawAttr(c);drawStars(c);
+  if(starsUnder)drawStars(c);              // イラストの下に星
   if(illImg&&popCv){
     const wc=workCv.getContext('2d');
     wc.globalCompositeOperation='source-over';wc.clearRect(0,0,W,H);
@@ -425,6 +502,14 @@ function compose(c){
     wc.globalCompositeOperation='destination-in';wc.drawImage(popCv,0,0);
     wc.globalCompositeOperation='source-over';
     c.drawImage(workCv,0,0);
+  }
+  if(panelBox)  drawPanel(c,R.boxOut,  panelBoxA,  0.013);
+  if(panelPlate)drawPanel(c,R.plateOut,panelPlateA,0.011);
+  drawAttr(c);if(!starsUnder)drawStars(c);drawProp(c);
+  if(kind!=='st'&&$('#drawSep').checked){
+    c.strokeStyle=tcol==='#fff'?'rgba(20,20,20,.85)':'rgba(20,20,20,.85)';
+    c.lineWidth=Math.max(2,H*0.0021);
+    c.beginPath();c.moveTo(R.sep.x0*W,R.sep.y*H);c.lineTo(R.sep.x1*W,R.sep.y*H);c.stroke();
   }
   drawText(c);
 }
@@ -547,21 +632,37 @@ async function ghList(repo,branch,path){
             .sort(function(a,b){return a.name.localeCompare(b.name);});
   }catch(e){return null;}
 }
+function classify(name){
+  const s=name.toLowerCase();
+  if(/(^|[_\-/])frame|枠/.test(s))return 0;
+  if(/attr|属性/.test(s))return 1;
+  if(/star|level|rank|星/.test(s))return 2;
+  if(/prop|icon|type|種類/.test(s))return 3;
+  return -1;
+}
 async function ghLoadAll(quiet){
   const repo=$('#ghRepo').value.trim();
   if(!repo){if(!quiet)$('#ghMsg').textContent='リポジトリ名を入れてください';return;}
   const branch=$('#ghBranch').value.trim()||'main';
-  const base=$('#ghPath').value.trim()||'assets';
+  const base=$('#ghPath').value.trim();
   $('#ghMsg').textContent='読み込み中…';
   const cats=[[['frames','frame','枠'],frames,'#sFrame',pickFrame],
               [['attrs','attributes','attr','属性'],attrs,'#sAttr',pickAttr],
-              [['stars','star','levels','星'],stars,'#sStar',pickStar]];
+              [['stars','star','levels','星'],stars,'#sStar',pickStar],
+              [['props','types','種類','魔法罠'],props,'#sProp',pickProp]];
   let n=0,hit=0;
+  // 1) フォルダ分けされている場合（assets/ の有無どちらでも探す）
+  const roots=[];
+  [base,'assets',''].forEach(function(r){if(roots.indexOf(r)<0)roots.push(r);});
   for(const c of cats){
     let files=null;
-    for(const nm of c[0]){
-      files=await ghList(repo,branch,base?base+'/'+nm:nm);
-      if(files){hit++;break;}
+    outer:
+    for(const root of roots){
+      for(const nm of c[0]){
+        files=await ghList(repo,branch,root?root+'/'+nm:nm);
+        if(files&&files.length){hit++;break outer;}
+        files=null;
+      }
     }
     if(!files)continue;
     for(const f of files){
@@ -571,8 +672,25 @@ async function ghLoadAll(quiet){
     }
     rebuild(c[1],c[2],c[3]);
   }
+  // 2) フォルダが無ければ、指定した場所を直接見てファイル名で振り分ける
+  if(!hit){
+    for(const path of [base,'assets','']){
+      const files=await ghList(repo,branch,path);
+      if(!files||!files.length)continue;
+      let got=0;
+      for(const f of files){
+        const k=classify(f.name);
+        if(k<0)continue;
+        const c=cats[k];
+        if(c[1].some(function(i){return i.src===f.download_url;}))continue;
+        const im=await mkImg(f.download_url,true);
+        if(im){c[1].push(im);n++;got++;}
+      }
+      if(got){hit=1;cats.forEach(function(c){rebuild(c[1],c[2],c[3]);});break;}
+    }
+  }
   idbSet('gh',{repo:repo,branch:branch,path:base});
-  if(!hit)$('#ghMsg').textContent='フォルダが見つかりません（frames / attrs / stars）';
+  if(!hit)$('#ghMsg').textContent='素材が見つかりません（frame_ / attr_ / star_ / prop_ で始まる名前にしてください）';
   else $('#ghMsg').textContent=n?('＋'+n+'枚'):'新しい素材なし';
   if(frames.length&&fi<0)pickFrame(0);
   render();
@@ -605,6 +723,7 @@ function pickFrame(i){
   $('#empty').style.display='none';render();
 }
 function pickAttr(i){ai=(attrs[i]?i:-1);mark('#sAttr',ai);render();}
+function pickProp(i){pi=(props[i]?i:-1);mark('#sProp',pi);render();}
 function pickStar(i){
   si=(stars[i]?i:-1);mark('#sStar',si);
   if(si>=0&&stN===0){stN=8;$('#stN').value=8;$('#stNv').textContent=8;}
@@ -613,6 +732,10 @@ function pickStar(i){
 $('#addFrame').onclick=function(){$('#fFrame').click();};
 $('#addAttr').onclick=function(){$('#fAttr').click();};
 $('#addStar').onclick=function(){$('#fStar').click();};
+$('#addProp').onclick=function(){$('#fProp').click();};
+$('#noProp').onclick=function(){pi=-1;mark('#sProp',-1);render();};
+$('#delProp').onclick=function(){if(pi<0)return;props.splice(pi,1);
+  rebuild(props,'#sProp',pickProp);persist();pickProp(Math.min(pi,props.length-1));};
 $('#noAttr').onclick=function(){ai=-1;mark('#sAttr',-1);render();};
 $('#delFrame').onclick=function(){if(fi<0)return;frames.splice(fi,1);
   rebuild(frames,'#sFrame',pickFrame);persist();pickFrame(Math.min(fi,frames.length-1));};
@@ -623,6 +746,7 @@ $('#delStar').onclick=function(){if(si<0)return;stars.splice(si,1);
 $('#fFrame').onchange=function(e){addFiles(e.target.files,frames,'#sFrame',pickFrame);e.target.value='';};
 $('#fAttr').onchange=function(e){addFiles(e.target.files,attrs,'#sAttr',pickAttr);e.target.value='';};
 $('#fStar').onchange=function(e){addFiles(e.target.files,stars,'#sStar',pickStar);e.target.value='';};
+$('#fProp').onchange=function(e){addFiles(e.target.files,props,'#sProp',pickProp);e.target.value='';};
 $('#openIll').onclick=function(){if(W)$('#fIll').click();else alert('先に枠を読み込んでください');};
 $('#fIll').onchange=function(e){
   const f=e.target.files[0];if(!f)return;
@@ -748,6 +872,9 @@ sl('#size','#szv',function(v){brush=v;});
 sl('#aSz','#aSzv',function(v){attrSz=v/100;});
 sl('#aX','#aXv',function(v){attrX=v/1000;},function(v){return '.'+v;});
 sl('#aY','#aYv',function(v){attrY=v/1000;},function(v){return '.'+v;});
+sl('#pSz','#pSzv',function(v){propSz=v/100;});
+sl('#pX','#pXv',function(v){propX=v/1000;},function(v){return '.'+v;});
+sl('#pY','#pYv',function(v){propY=v/1000;},function(v){return '.'+v;});
 sl('#stN','#stNv',function(v){stN=v;});
 sl('#stSz','#stSzv',function(v){stSz=v/100;});
 sl('#stY','#stYv',function(v){stY=v/1000;},function(v){return '.'+v;});
@@ -757,7 +884,23 @@ sl('#eSz','#eSzv',function(v){});
 sl('#tX','#tXv',function(v){tdx=v;});
 sl('#tY','#tYv',function(v){tdy=v;});
 $('#stLeft').onchange=function(e){stLeft=e.target.checked;render();};
+$('#stUnder').onchange=function(e){starsUnder=e.target.checked;render();};
 $('#numLeft').onchange=render;
+$('#drawSep').onchange=render;
+$('#pnBox').onchange=function(e){panelBox=e.target.checked;render();};
+$('#pnPlate').onchange=function(e){panelPlate=e.target.checked;render();};
+sl('#pnBoxA','#pnBoxAv',function(v){panelBoxA=v/100;},function(v){return v+'%';});
+sl('#pnPlateA','#pnPlateAv',function(v){panelPlateA=v/100;},function(v){return v+'%';});
+$('#popAll').onclick=function(){
+  if(!W)return; if(!popCtx)initPop();
+  snap();popCtx.globalCompositeOperation='source-over';
+  popCtx.fillStyle='#fff';popCtx.fillRect(0,0,W,H);
+  panelBox=true;$('#pnBox').checked=true;
+  render();
+};
+$('#popNone').onclick=function(){
+  if(!popCtx)return; snap();popCtx.clearRect(0,0,W,H);render();
+};
 $('#winAlpha').onchange=render;
 $('#nOutline').onchange=render;
 ['#tName','#tType','#tEff','#tAtk','#tDef','#tNum'].forEach(function(id){
@@ -769,6 +912,15 @@ $('#cBlack').onclick=function(){tcol='#000';
   $('#cBlack').classList.add('on');$('#cWhite').classList.remove('on');render();};
 $('#cWhite').onclick=function(){tcol='#fff';
   $('#cWhite').classList.add('on');$('#cBlack').classList.remove('on');render();};
+function setKind(k){
+  kind=k;
+  $('#kMon').classList.toggle('on',k==='monster');
+  $('#kST').classList.toggle('on',k==='st');
+  $('#fldAtk').style.display=(k==='st')?'none':'';
+  render();
+}
+$('#kMon').onclick=function(){setKind('monster');};
+$('#kST').onclick=function(){setKind('st');};
 $('#fit').onclick=fit;
 
 /* ---------- 書き出し ---------- */
@@ -794,7 +946,7 @@ $('#sheet').onclick=function(e){if(e.target===$('#sheet'))$('#sheet').classList.
 (async function(){
   await openDB();
   const sets=[['frames',frames,'#sFrame',pickFrame],['attrs',attrs,'#sAttr',pickAttr],
-              ['stars',stars,'#sStar',pickStar]];
+              ['stars',stars,'#sStar',pickStar],['props',props,'#sProp',pickProp]];
   for(const s of sets){
     const list=await idbGet(s[0]);
     if(list&&list.length){
