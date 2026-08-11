@@ -698,19 +698,19 @@ function composeMask(c){
     return;
   }
   drawWhiteCard(c);
-  const bi=bgMask||bgImg, si=subjMask||subjImg;
-  if(bi&&win.w>0){c.save();c.beginPath();c.rect(win.x,win.y,win.w,win.h);c.clip();
-    drawLayer(c,bi,bgT);c.restore();}
-  if(si){
+  const bgSrc=bgMask||bgImg, subjSrc=subjMask||subjImg;
+  if(bgSrc&&win.w>0){c.save();c.beginPath();c.rect(win.x,win.y,win.w,win.h);c.clip();
+    drawLayer(c,bgSrc,bgT);c.restore();}
+  if(subjSrc){
     if(clipBottom){c.save();c.beginPath();c.rect(0,0,W,R.boxOut[3]*H);c.clip();}
     if(popUsed&&popCv){
       const wc=workCv.getContext('2d');
       wc.globalCompositeOperation='source-over';wc.clearRect(0,0,W,H);
-      drawLayer(wc,si,subjT);
+      drawLayer(wc,subjSrc,subjT);
       wc.globalCompositeOperation='destination-in';wc.drawImage(popCv,0,0);
       wc.globalCompositeOperation='source-over';
       c.drawImage(workCv,0,0);
-    }else drawLayer(c,si,subjT);
+    }else drawLayer(c,subjSrc,subjT);
     if(clipBottom)c.restore();
   }
   if(maskBoxMode!=='auto'){
@@ -1143,8 +1143,16 @@ $('#fMask2').onchange=function(e){
   const f=e.target.files[0];if(!f)return;
   const im=new Image();
   im.onload=function(){
-    if(mkTarget==='bg')bgMask=im; else subjMask=im;
-    maskMode=true;$('#mkOn').checked=true;render();
+    if(mkTarget==='bg'){
+      bgMask=im;
+      if(!bgImg){const k=Math.max(win.w/im.naturalWidth,win.h/im.naturalHeight);
+        bgT={x:win.x+win.w/2,y:win.y+win.h/2,s:k,rot:0};}
+    }else{
+      subjMask=im;
+      if(!subjImg){const k=Math.min(W*0.8/im.naturalWidth,H*0.7/im.naturalHeight);
+        subjT={x:win.x+win.w/2,y:win.y+win.h/2,s:k,rot:0};}
+    }
+    maskMode=true;$('#mkOn').checked=true;syncPlace();render();
   };
   im.src=URL.createObjectURL(f);e.target.value='';
 };
