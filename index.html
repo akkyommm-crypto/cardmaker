@@ -136,6 +136,8 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
         <button class="btn ghost sm" id="mkClear">読み込みを取消</button>
       </div>
       <div class="bar">
+        <label class="chk"><input type="checkbox" id="mkFrame">枠を黒くする</label>
+        <label class="chk"><input type="checkbox" id="mkMarks" checked>名前・属性・星を白で出す</label>
         <label class="chk"><input type="checkbox" id="mkBox">効果欄を黒くする</label>
         <label class="chk"><input type="checkbox" id="mkText">文字を黒で描く</label>
       </div>
@@ -375,7 +377,7 @@ let fi=-1,ai=-1,si=-1,pi=-1;
 let frameImg=null,W=0,H=0;
 let bgImg=null,subjImg=null;
 let bgMask=null,subjMask=null;      // 転写マスク用の黒塗り画像
-let maskMode=false,maskBox=false,maskText=false;
+let maskMode=false,maskBox=false,maskText=false,maskFrameBlack=false,maskMarks=true;
 let bgT={x:0,y:0,s:1,rot:0},subjT={x:0,y:0,s:1,rot:0};
 let layer='bg';                       // いま操作している層
 function curImg(){return layer==='bg'?bgImg:subjImg;}
@@ -448,8 +450,8 @@ function drawWhiteCard(c){
   wc.drawImage(frameImg,0,0,W,H);
   wc.globalCompositeOperation='destination-over';       // 窓の穴も埋める
   wc.fillStyle='#000';wc.fillRect(win.x,win.y,win.w,win.h);
-  wc.globalCompositeOperation='source-in';              // 全部を白に
-  wc.fillStyle='#fff';wc.fillRect(0,0,W,H);
+  wc.globalCompositeOperation='source-in';              // カードの形だけ塗る
+  wc.fillStyle=maskFrameBlack?'#000':'#fff';wc.fillRect(0,0,W,H);
   wc.globalCompositeOperation='source-over';
   c.drawImage(workCv,0,0);
 }
@@ -617,7 +619,35 @@ function composeMask(c){
     c.fillStyle='#000';
     c.fillRect(R.boxOut[0]*W,R.boxOut[1]*H,(R.boxOut[2]-R.boxOut[0])*W,(R.boxOut[3]-R.boxOut[1])*H);
   }
-  if(maskText){const keep=tcol;tcol='#000';drawText(c);tcol=keep;}
+  if(maskMarks)drawMaskMarks(c);
+  if(maskText){const keep=tcol,ns=nameStyle;tcol='#000';nameStyle='black';
+    drawText(c);tcol=keep;nameStyle=ns;}
+}
+/* マスク用：名前・属性・星を白ベタで出す（細かい形は再現しない） */
+function drawMaskMarks(c){
+  c.save();c.fillStyle='#fff';
+  // 属性の丸
+  if(ai>=0&&attrs[ai]){
+    const r=R.attr.r*W*attrSz;
+    c.beginPath();c.arc(attrX*W,attrY*H,r,0,7);c.fill();
+  }
+  // 星の丸
+  if(si>=0&&stars[si]&&stN>0){
+    const r=R.star.r*W*stSz,gap=R.star.gap*W*stG;
+    for(let i=0;i<stN;i++){
+      const cx=stLeft?(1-R.star.right)*W+i*gap:R.star.right*W-i*gap;
+      c.beginPath();c.arc(cx,stY*H,r,0,7);c.fill();
+    }
+  }
+  // カード名
+  const nm=$('#tName').value.trim();
+  if(nm){
+    const sz=R.name.size*H*(+$('#nSz').value/100);
+    c.font='700 '+sz+'px '+F[jpFont];
+    c.textBaseline='alphabetic';c.textAlign='left';
+    c.fillText(nm,R.name.x*W+tdx/1000*W,R.name.base*H+tdy/1000*H);
+  }
+  c.restore();
 }
 function drawFx(c){
   if(holoAmt>0){
@@ -999,6 +1029,8 @@ document.querySelectorAll('[data-layer]').forEach(function(b){b.onclick=function
   b.classList.add('on');layer=b.dataset.layer;syncPlace();render();};});
 $('#mkOn').onchange=function(e){maskMode=e.target.checked;render();};
 $('#mkBox').onchange=function(e){maskBox=e.target.checked;render();};
+$('#mkFrame').onchange=function(e){maskFrameBlack=e.target.checked;render();};
+$('#mkMarks').onchange=function(e){maskMarks=e.target.checked;render();};
 $('#mkText').onchange=function(e){maskText=e.target.checked;render();};
 let mkTarget='bg';
 $('#mkBg').onclick=function(){mkTarget='bg';$('#fMask2').click();};
