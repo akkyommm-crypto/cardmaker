@@ -103,7 +103,7 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
   <header>
     <h1>カードメーカー</h1>
     <div class="spacer"></div>
-    <button class="btn sm" id="openIll">イラスト</button>
+    <button class="btn sm" id="openIll">背景</button>
     <button class="btn sm" id="fit">全体</button>
     <button class="btn sm" id="save">書き出し</button>
   </header>
@@ -184,6 +184,12 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
 
     <!-- 配置 -->
     <div class="panel" id="pPlace">
+      <div class="lab">動かす絵</div>
+      <div class="bar">
+        <button class="btn sm on" data-layer="bg">背景（窓の中）</button>
+        <button class="btn sm" data-layer="subj">人物（枠の外へ）</button>
+        <button class="btn ghost sm" id="clrLayer">この絵を消す</button>
+      </div>
       <div class="bar"><label class="sl">大きさ<input type="range" id="sc" min="5" max="400" value="100"><b id="scv">100%</b></label></div>
       <div class="bar"><label class="sl">回転<input type="range" id="rot" min="-180" max="180" value="0"><b id="rotv">0°</b></label></div>
       <div class="bar"><label class="sl">枠の濃さ<input type="range" id="fo" min="0" max="100" value="100"><b id="fov">100%</b></label></div>
@@ -338,8 +344,18 @@ const F={
 
 let frames=[],attrs=[],stars=[],props=[];
 let fi=-1,ai=-1,si=-1,pi=-1;
-let frameImg=null,illImg=null,W=0,H=0;
-let il={x:0,y:0,s:1,rot:0};
+let frameImg=null,W=0,H=0;
+let bgImg=null,subjImg=null;
+let bgT={x:0,y:0,s:1,rot:0},subjT={x:0,y:0,s:1,rot:0};
+let layer='bg';                       // いま操作している層
+function curImg(){return layer==='bg'?bgImg:subjImg;}
+function curT(){return layer==='bg'?bgT:subjT;}
+function syncPlace(){
+  const t=curT();
+  $('#sc').value=Math.round(t.s*100);$('#scv').textContent=Math.round(t.s*100)+'%';
+  $('#rot').value=Math.round(t.rot);$('#rotv').textContent=Math.round(t.rot)+'°';
+  $('#openIll').textContent=(layer==='bg')?'背景':'人物';
+}
 let win={x:0,y:0,w:0,h:0};
 let popCv=null,popCtx=null,workCv=null;
 let vs=1,vx=0,vy=0;
@@ -353,6 +369,7 @@ let tdx=0,tdy=0;
 let panelBox=false,panelBoxA=0.72,panelPlate=false,panelPlateA=0.72;
 let starsUnder=false;
 const undoS=[];let lasso=[];
+let popUsed=false;
 
 /* ---------- 保存（IndexedDB） ---------- */
 let db=null;
@@ -392,11 +409,12 @@ function fit(){
   vs=Math.min(r.width/W,r.height/H)*0.94;
   vx=(r.width-W*vs)/2;vy=(r.height-H*vs)/2;render();
 }
-function drawIll(c){
-  if(!illImg)return;
-  c.save();c.translate(il.x,il.y);c.rotate(il.rot*Math.PI/180);c.scale(il.s,il.s);
-  c.drawImage(illImg,-illImg.naturalWidth/2,-illImg.naturalHeight/2);c.restore();
+function drawLayer(c,img,t){
+  if(!img)return;
+  c.save();c.translate(t.x,t.y);c.rotate(t.rot*Math.PI/180);c.scale(t.s,t.s);
+  c.drawImage(img,-img.naturalWidth/2,-img.naturalHeight/2);c.restore();
 }
+function drawIll(c){drawLayer(c,bgImg,bgT);}
 const NG='、。，．）」』】〕〉》〟’”ぁぃぅぇぉっゃゅょゎヵヶァィゥェォッャュョー―…！？：；';
 function wrap(c,text,maxw){
   const out=[];
@@ -530,7 +548,7 @@ function drawPanel(c,r,alpha,tRatio){
 }
 function compose(c){
   c.clearRect(0,0,W,H);
-  if(illImg&&win.w>0){
+  if(bgImg&&win.w>0){
     if($('#winAlpha').checked&&holeCv){
       if(!work2){work2=document.createElement('canvas');work2.width=W;work2.height=H;}
       const w2=work2.getContext('2d');
@@ -545,10 +563,20 @@ function compose(c){
   }
   if(frameImg){c.globalAlpha=frameOp;c.drawImage(frameImg,0,0,W,H);c.globalAlpha=1;}
   if(starsUnder)drawStars(c);              // イラストの下に星
-  if(illImg&&popCv){
+  // 人物レイヤー（枠の上）。はみ出しマスクを塗っていればそこだけ、無ければ全部出す
+  if(subjImg){
+    if(popUsed&&popCv){
+      const wc=workCv.getContext('2d');
+      wc.globalCompositeOperation='source-over';wc.clearRect(0,0,W,H);
+      drawLayer(wc,subjImg,subjT);
+      wc.globalCompositeOperation='destination-in';wc.drawImage(popCv,0,0);
+      wc.globalCompositeOperation='source-over';
+      c.drawImage(workCv,0,0);
+    }else drawLayer(c,subjImg,subjT);
+  }else if(bgImg&&popUsed&&popCv){
     const wc=workCv.getContext('2d');
     wc.globalCompositeOperation='source-over';wc.clearRect(0,0,W,H);
-    drawIll(wc);
+    drawLayer(wc,bgImg,bgT);
     wc.globalCompositeOperation='destination-in';wc.drawImage(popCv,0,0);
     wc.globalCompositeOperation='source-over';
     c.drawImage(workCv,0,0);
@@ -609,6 +637,7 @@ $('#undo').onclick=function(){
   if(!undoS.length)$('#undo').disabled=true;render();
 };
 function popStroke(a,b){
+  popUsed=true;
   popCtx.globalCompositeOperation=(ink==='w')?'source-over':'destination-out';
   popCtx.strokeStyle=popCtx.fillStyle='#fff';
   popCtx.lineWidth=brush;popCtx.lineCap='round';popCtx.lineJoin='round';
@@ -619,6 +648,7 @@ function popStroke(a,b){
 }
 function popLasso(){
   if(lasso.length<3){lasso=[];render();return;}
+  popUsed=true;
   popCtx.globalCompositeOperation=(ink==='w')?'source-over':'destination-out';
   popCtx.fillStyle='#fff';popCtx.beginPath();
   popCtx.moveTo(lasso[0].x,lasso[0].y);
@@ -832,15 +862,27 @@ $('#fAttr').onchange=function(e){addFiles(e.target.files,attrs,'#sAttr',pickAttr
 $('#fStar').onchange=function(e){addFiles(e.target.files,stars,'#sStar',pickStar);e.target.value='';};
 $('#fProp').onchange=function(e){addFiles(e.target.files,props,'#sProp',pickProp);e.target.value='';};
 $('#openIll').onclick=function(){if(W)$('#fIll').click();else alert('先に枠を読み込んでください');};
+document.querySelectorAll('[data-layer]').forEach(function(b){b.onclick=function(){
+  document.querySelectorAll('[data-layer]').forEach(function(o){o.classList.remove('on');});
+  b.classList.add('on');layer=b.dataset.layer;syncPlace();render();};});
+$('#clrLayer').onclick=function(){
+  if(layer==='bg')bgImg=null; else subjImg=null;
+  render();
+};
 $('#fIll').onchange=function(e){
   const f=e.target.files[0];if(!f)return;
   const im=new Image();
   im.onload=function(){
-    illImg=im;
-    const k=Math.max(win.w/im.naturalWidth,win.h/im.naturalHeight);
-    il={x:win.x+win.w/2,y:win.y+win.h/2,s:k,rot:0};
-    $('#sc').value=Math.round(k*100);$('#scv').textContent=Math.round(k*100)+'%';
-    $('#rot').value=0;$('#rotv').textContent='0°';render();
+    if(layer==='bg'){
+      bgImg=im;
+      const k=Math.max(win.w/im.naturalWidth,win.h/im.naturalHeight);
+      bgT={x:win.x+win.w/2,y:win.y+win.h/2,s:k,rot:0};
+    }else{
+      subjImg=im;
+      const k=Math.min(W*0.8/im.naturalWidth,H*0.7/im.naturalHeight);
+      subjT={x:win.x+win.w/2,y:win.y+win.h/2,s:k,rot:0};
+    }
+    syncPlace();render();
   };
   im.src=URL.createObjectURL(f);e.target.value='';
 };
@@ -856,11 +898,11 @@ stage.addEventListener('pointerdown',function(e){
     painting=false;lasso=[];winDrag=null;
     const v=[...pts.values()],a=v[0],b=v[1];
     drag={d:Math.hypot(a.x-b.x,a.y-b.y),ang:Math.atan2(b.y-a.y,b.x-a.x),
-          s:il.s,rot:il.rot,vs:vs,cx:(a.x+b.x)/2,cy:(a.y+b.y)/2,vx:vx,vy:vy};
+          s:curT().s,rot:curT().rot,vs:vs,cx:(a.x+b.x)/2,cy:(a.y+b.y)/2,vx:vx,vy:vy};
     render();return;
   }
   const p=toImg(e.clientX,e.clientY);
-  if(tab==='place'){drag={move:true,x:e.clientX,y:e.clientY,ix:il.x,iy:il.y};return;}
+  if(tab==='place'){const t=curT();drag={move:true,x:e.clientX,y:e.clientY,ix:t.x,iy:t.y};return;}
   if(tab==='win'){winDrag={x:p.x,y:p.y};return;}
   if(tab==='pop'){
     if(!popCtx)initPop();
@@ -877,10 +919,10 @@ stage.addEventListener('pointermove',function(e){
     const v=[...pts.values()],a=v[0],b=v[1];
     const d=Math.hypot(a.x-b.x,a.y-b.y),ang=Math.atan2(b.y-a.y,b.x-a.x);
     if(tab==='place'){
-      il.s=Math.max(.02,drag.s*(d/drag.d));
-      il.rot=drag.rot+(ang-drag.ang)*180/Math.PI;
-      $('#sc').value=Math.round(il.s*100);$('#scv').textContent=Math.round(il.s*100)+'%';
-      $('#rot').value=Math.round(il.rot);$('#rotv').textContent=Math.round(il.rot)+'°';
+      const t=curT();
+      t.s=Math.max(.02,drag.s*(d/drag.d));
+      t.rot=drag.rot+(ang-drag.ang)*180/Math.PI;
+      syncPlace();
     }else{
       const r=stage.getBoundingClientRect(),cx=(a.x+b.x)/2,cy=(a.y+b.y)/2;
       vs=Math.max(.05,drag.vs*(d/drag.d));
@@ -896,7 +938,7 @@ stage.addEventListener('pointermove',function(e){
     dot.style.width=dot.style.height=(brush*vs)+'px';
   }
   if(drag&&drag.move&&pts.size===1){
-    il.x=drag.ix+(e.clientX-drag.x)/vs;il.y=drag.iy+(e.clientY-drag.y)/vs;render();return;}
+    const t=curT();t.x=drag.ix+(e.clientX-drag.x)/vs;t.y=drag.iy+(e.clientY-drag.y)/vs;render();return;}
   if(drag&&drag.pan&&pts.size===1){
     vx=drag.vx+e.clientX-drag.x;vy=drag.vy+e.clientY-drag.y;render();return;}
   if(winDrag){
@@ -923,8 +965,7 @@ stage.addEventListener('wheel',function(e){
   if(!W)return;e.preventDefault();
   const k=e.deltaY<0?1.12:1/1.12;
   if(tab==='place'){
-    il.s=Math.max(.02,il.s*k);
-    $('#sc').value=Math.round(il.s*100);$('#scv').textContent=Math.round(il.s*100)+'%';
+    const t=curT();t.s=Math.max(.02,t.s*k);syncPlace();
   }else{
     const r=stage.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
     const ns=Math.max(.05,vs*k);vx=mx-(mx-vx)*ns/vs;vy=my-(my-vy)*ns/vs;vs=ns;
@@ -957,8 +998,8 @@ document.querySelectorAll('#ink button').forEach(function(b){b.onclick=function(
 
 function sl(id,vid,fn,fmt){$(id).oninput=function(e){const v=+e.target.value;
   $(vid).textContent=fmt?fmt(v):v;fn(v);render();};}
-sl('#sc','#scv',function(v){il.s=v/100;},function(v){return v+'%';});
-sl('#rot','#rotv',function(v){il.rot=v;},function(v){return v+'°';});
+sl('#sc','#scv',function(v){curT().s=v/100;},function(v){return v+'%';});
+sl('#rot','#rotv',function(v){curT().rot=v;},function(v){return v+'°';});
 sl('#fo','#fov',function(v){frameOp=v/100;},function(v){return v+'%';});
 sl('#size','#szv',function(v){brush=v;});
 sl('#aSz','#aSzv',function(v){attrSz=v/100;});
@@ -986,12 +1027,12 @@ sl('#pnPlateA','#pnPlateAv',function(v){panelPlateA=v/100;},function(v){return v
 $('#popAll').onclick=function(){
   if(!W)return; if(!popCtx)initPop();
   snap();popCtx.globalCompositeOperation='source-over';
-  popCtx.fillStyle='#fff';popCtx.fillRect(0,0,W,H);
+  popCtx.fillStyle='#fff';popCtx.fillRect(0,0,W,H);popUsed=true;
   panelBox=true;$('#pnBox').checked=true;
   render();
 };
 $('#popNone').onclick=function(){
-  if(!popCtx)return; snap();popCtx.clearRect(0,0,W,H);render();
+  if(!popCtx)return; snap();popCtx.clearRect(0,0,W,H);popUsed=false;render();
 };
 $('#winAlpha').onchange=render;
 $('#nOutline').onchange=render;
