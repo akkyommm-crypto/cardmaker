@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>カードメーカー</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@600;700&family=Noto+Serif+JP:wght@600;700&family=Tinos:wght@700&display=swap" rel="stylesheet">
 <style>
 :root{--ink:#16130F;--panel:#221D17;--panel2:#2C251C;--line:#3B3226;
   --amber:#E8A33D;--text:#E6DFD3;--dim:#948977}
@@ -138,8 +141,15 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
       <div class="bar">
         <label class="chk"><input type="checkbox" id="mkFrame">枠を黒くする</label>
         <label class="chk"><input type="checkbox" id="mkMarks" checked>名前・属性・星を白で出す</label>
-        <label class="chk"><input type="checkbox" id="mkBox">効果欄を黒くする</label>
+        <label class="chk">効果欄</label>
+        <button class="btn sm on" data-mkbox="auto">枠と同じ</button>
+        <button class="btn sm" data-mkbox="white">白</button>
+        <button class="btn sm" data-mkbox="black">黒</button>
         <label class="chk"><input type="checkbox" id="mkText">文字を黒で描く</label>
+      </div>
+      <div class="bar">
+        <label class="chk"><input type="checkbox" id="mkRing">外周だけ黒く残す（位置合わせ用）</label>
+        <label class="chk"><input type="checkbox" id="mkName">名前だけ出力</label>
       </div>
       <div id="hint" style="margin-top:8px">白＝転写する（キラキラ）／黒＝転写しない。カラーで位置を決めてから、ここで黒塗り版に差し替えて書き出してください。</div>
     </div>
@@ -306,8 +316,11 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
 
       <div class="lab">書体</div>
       <div class="bar">
-        <button class="btn sm on" id="fMincho">明朝</button>
-        <button class="btn sm" id="fGothic">ゴシック</button>
+        <button class="btn sm on" data-font="shippori">しっぽり明朝</button>
+        <button class="btn sm" data-font="noto">Noto明朝</button>
+        <button class="btn sm" data-font="mincho">端末の明朝</button>
+        <button class="btn sm" data-font="gothic">ゴシック</button>
+        <button class="btn sm" id="loadFont">自前</button>
         <div class="spacer"></div>
         <button class="btn sm" id="cBlack">黒字</button>
         <button class="btn sm on" id="cWhite">白字</button>
@@ -317,6 +330,11 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
         <label class="sl">名前<input type="range" id="nSz" min="40" max="180" value="100"><b id="nSzv">100</b></label>
         <label class="sl">効果<input type="range" id="eSz" min="50" max="170" value="100"><b id="eSzv">100</b></label>
       </div>
+      <div class="bar">
+        <label class="sl">名前の字間<input type="range" id="nTr" min="-4" max="20" value="2"><b id="nTrv">2</b></label>
+        <label class="sl">効果の横幅<input type="range" id="eCd" min="80" max="100" value="96"><b id="eCdv">96</b></label>
+      </div>
+      <div id="hint" style="margin-top:4px">カード名に「黒魔導(くろまどう)のカーテン」と書くとルビが付きます。長い名前は自動で横に潰れて枠に収まります。</div>
       <div class="bar">
         <label class="sl">全体↔<input type="range" id="tX" min="-60" max="60" value="0"><b id="tXv">0</b></label>
         <label class="sl">全体↕<input type="range" id="tY" min="-60" max="60" value="0"><b id="tYv">0</b></label>
@@ -344,6 +362,7 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
 <input type="file" id="fProp" accept="image/*" multiple>
 <input type="file" id="fIll" accept="image/*">
 <input type="file" id="fMask2" accept="image/*">
+<input type="file" id="fFont" accept=".woff2,.woff,.otf,.ttf,font/*">
 
 <script>
 const $=s=>document.querySelector(s);
@@ -354,7 +373,7 @@ const R={   // 素材の枠（1180x1720）と公式カードから実測した�
   win :[0.1254,0.1866,0.8771,0.7017],
   attr:{x:0.8842,y:0.0805,r:0.0465},
   star:{y:0.1504,r:0.0260,right:0.8593,gap:0.0663},
-  name:{x:0.0664,base:0.0966,size:0.0535},
+  name:{x:0.0664,base:0.0966,size:0.0535,right:0.8300},
   type:{x:0.0789,base:0.7775,size:0.0178},
   eff :{x:0.0789,base:0.7998,lh:0.0211,w:0.8399,size:0.0138,
         bottom:0.9032,bottomST:0.9330},
@@ -367,9 +386,12 @@ const R={   // 素材の枠（1180x1720）と公式カードから実測した�
   plateOut:[0.0330,0.0105,0.9500,0.1210]    // 名前欄パネルの外形
 };
 const F={
-  mincho:'"Hiragino Mincho ProN","Yu Mincho","YuMincho","MS Mincho","Noto Serif JP",serif',
-  gothic:'"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo","Noto Sans JP",sans-serif',
-  serif :'"Times New Roman",Georgia,"Hiragino Mincho ProN",serif'
+  shippori:'"Shippori Mincho B1","Shippori Mincho","Hiragino Mincho ProN","Yu Mincho",serif',
+  noto    :'"Noto Serif JP","Hiragino Mincho ProN","Yu Mincho",serif',
+  mincho  :'"Hiragino Mincho ProN","Yu Mincho","YuMincho","MS Mincho",serif',
+  gothic  :'"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo","Noto Sans JP",sans-serif',
+  custom  :'"CardCustom","Hiragino Mincho ProN",serif',
+  serif   :'"Tinos","Times New Roman",Georgia,serif'
 };
 
 let frames=[],attrs=[],stars=[],props=[];
@@ -377,7 +399,7 @@ let fi=-1,ai=-1,si=-1,pi=-1;
 let frameImg=null,W=0,H=0;
 let bgImg=null,subjImg=null;
 let bgMask=null,subjMask=null;      // 転写マスク用の黒塗り画像
-let maskMode=false,maskBox=false,maskText=false,maskFrameBlack=false,maskMarks=true;
+let maskMode=false,maskBoxMode='auto',maskText=false,maskFrameBlack=false,maskMarks=true;
 let bgT={x:0,y:0,s:1,rot:0},subjT={x:0,y:0,s:1,rot:0};
 let layer='bg';                       // いま操作している層
 function curImg(){return layer==='bg'?bgImg:subjImg;}
@@ -392,7 +414,8 @@ let win={x:0,y:0,w:0,h:0};
 let popCv=null,popCtx=null,workCv=null;
 let vs=1,vx=0,vy=0;
 let tab='txt',tool='brush',ink='w',brush=70,frameOp=1;
-let jpFont='mincho',tcol='#fff',nameStyle='black';
+let jpFont='shippori',tcol='#fff',nameStyle='black';
+let nameTrack=0.02,effCond=0.96;   // 名前の字間 / 効果テキストの横圧縮
 let attrSz=1,attrX=R.attr.x,attrY=R.attr.y;
 let stN=0,stSz=1,stY=R.star.y,stG=1,stLeft=false;
 let propSz=1,propX=R.prop.x,propY=R.prop.y;
@@ -443,7 +466,7 @@ function fit(){
   vs=Math.min(r.width/W,r.height/H)*0.94;
   vx=(r.width-W*vs)/2;vy=(r.height-H*vs)/2;render();
 }
-function drawWhiteCard(c){
+function drawCardBase(c,color){
   if(!frameImg)return;
   const wc=workCv.getContext('2d');
   wc.globalCompositeOperation='source-over';wc.clearRect(0,0,W,H);
@@ -451,16 +474,82 @@ function drawWhiteCard(c){
   wc.globalCompositeOperation='destination-over';       // 窓の穴も埋める
   wc.fillStyle='#000';wc.fillRect(win.x,win.y,win.w,win.h);
   wc.globalCompositeOperation='source-in';              // カードの形だけ塗る
-  wc.fillStyle=maskFrameBlack?'#000':'#fff';wc.fillRect(0,0,W,H);
+  wc.fillStyle=color;wc.fillRect(0,0,W,H);
   wc.globalCompositeOperation='source-over';
   c.drawImage(workCv,0,0);
 }
+/* カードの形に沿った外周のリング（貼るときの位置合わせ用） */
+function drawCardRing(c,color){
+  if(!frameImg)return;
+  const wc=workCv.getContext('2d');
+  wc.globalCompositeOperation='source-over';wc.clearRect(0,0,W,H);
+  wc.drawImage(frameImg,0,0,W,H);
+  wc.globalCompositeOperation='destination-over';
+  wc.fillStyle='#000';wc.fillRect(win.x,win.y,win.w,win.h);
+  wc.globalCompositeOperation='source-in';
+  wc.fillStyle=color;wc.fillRect(0,0,W,H);
+  // 内側を抜いてリングにする
+  const t=RING_T*W, sx=(W-2*t)/W, sy=(H-2*t)/H;
+  wc.globalCompositeOperation='destination-out';
+  wc.save();wc.translate(t,t);wc.scale(sx,sy);wc.drawImage(workCv,0,0);wc.restore();
+  wc.globalCompositeOperation='source-over';
+  c.drawImage(workCv,0,0);
+}
+function drawWhiteCard(c){drawCardBase(c,maskFrameBlack?'#000':'#fff');}
 function drawLayer(c,img,t){
   if(!img)return;
   c.save();c.translate(t.x,t.y);c.rotate(t.rot*Math.PI/180);c.scale(t.s,t.s);
   c.drawImage(img,-img.naturalWidth/2,-img.naturalHeight/2);c.restore();
 }
 function drawIll(c){drawLayer(c,bgImg,bgT);}
+/* 「黒魔導(くろまどう)のカーテン」のように書くとルビが付く */
+function parseRuby(t){
+  const out=[];let i=0;
+  while(i<t.length){
+    const m=t.slice(i).match(/^([^(（]+)[(（]([^)）]*)[)）]/);
+    if(m){out.push({b:m[1],r:m[2]});i+=m[0].length;}
+    else{
+      const j=t.slice(i).search(/[(（]/);
+      if(j<0){out.push({b:t.slice(i),r:''});break;}
+      out.push({b:t.slice(i,i+j),r:''});i+=j;
+      if(i<t.length&&!/[^(（]/.test(t[i]))i++;
+      else if(t.slice(i).search(/^[^(（]+[(（]/)<0){out.push({b:t.slice(i),r:''});break;}
+    }
+  }
+  return out.filter(function(o){return o.b||o.r;});
+}
+function drawName(c,nm,sz,nx,ny,fill,outline,dark){
+  const toks=parseRuby(nm), tr=sz*nameTrack;
+  c.font='700 '+sz+'px '+F[jpFont];
+  let wsum=0;
+  toks.forEach(function(o){
+    for(const ch of o.b)wsum+=c.measureText(ch).width+tr;
+  });
+  wsum-=tr;
+  const maxW=(R.name.right-R.name.x)*W;
+  const kx=Math.min(1,maxW/Math.max(wsum,1));
+  c.save();c.translate(nx,ny);c.scale(kx,1);
+  let x=0;
+  toks.forEach(function(o){
+    const x0=x;
+    for(const ch of o.b){
+      if(outline){c.lineJoin='round';c.lineWidth=sz*0.11;
+        c.strokeStyle=dark?'rgba(255,255,255,.9)':'rgba(0,0,0,.88)';c.strokeText(ch,x,0);}
+      c.fillStyle=fill;c.fillText(ch,x,0);
+      x+=c.measureText(ch).width+tr;
+    }
+    if(o.r){
+      const bw=x-x0-tr, rs=sz*0.34;
+      c.save();c.font='700 '+rs+'px '+F[jpFont];
+      const rw=c.measureText(o.r).width;
+      const rx=x0+(bw-rw)/2, ry=-sz*0.92;
+      if(outline){c.lineJoin='round';c.lineWidth=rs*0.22;
+        c.strokeStyle=dark?'rgba(255,255,255,.9)':'rgba(0,0,0,.88)';c.strokeText(o.r,rx,ry);}
+      c.fillStyle=fill;c.fillText(o.r,rx,ry);c.restore();
+    }
+  });
+  c.restore();
+}
 const NG='、。，．）」』】〕〉》〟’”ぁぃぅぇぉっゃゅょゎヵヶァィゥェォッャュョー―…！？：；';
 function wrap(c,text,maxw){
   const out=[];
@@ -505,12 +594,7 @@ function drawText(c){
       }
       fill=g;dark=false;
     }
-    if($('#nOutline').checked){
-      c.lineJoin='round';c.lineWidth=sz*0.11;
-      c.strokeStyle=dark?'rgba(255,255,255,.9)':'rgba(0,0,0,.88)';
-      c.strokeText(nm,nx,ny);
-    }
-    c.fillStyle=fill;c.fillText(nm,nx,ny);
+    drawName(c,nm,sz,nx,ny,fill,$('#nOutline').checked,dark);
     c.fillStyle=tcol;
   }
   const ty=$('#tType').value.trim();
@@ -532,19 +616,21 @@ function drawText(c){
     let sz=R.eff.size*H*k,lh=R.eff.lh*H*k,lines;
     for(let n=0;n<16;n++){
       c.font=sz+'px '+F[jpFont];
-      lines=wrap(c,ef,R.eff.w*W);
+      lines=wrap(c,ef,R.eff.w*W/effCond);
       const bot=(kind==='st'?R.eff.bottomST:R.eff.bottom)*H;
       const tp=(kind==='st'?R.eff.base-0.0150:R.eff.base)*H;
       if(tp+(lines.length-1)*lh<=bot)break;
       sz*=0.95;lh*=0.95;
     }
     const top=(kind==='st'?R.eff.base-0.0150:R.eff.base)*H;
-    lines.forEach(function(l,i){c.fillText(l,R.eff.x*W+DX,top+i*lh+DY);});
+    c.save();c.scale(effCond,1);
+    lines.forEach(function(l,i){c.fillText(l,(R.eff.x*W+DX)/effCond,top+i*lh+DY);});
+    c.restore();
   }
   const a=$('#tAtk').value.trim(),d=$('#tDef').value.trim();
   if((a||d)&&kind!=='st'){
     c.font='700 '+(R.atk.size*H)+'px '+F.serif;c.textAlign='right';
-    c.fillText((a?'ATK/'+a:'')+(a&&d?'  ':'')+(d?'DEF/'+d:''),R.atk.right*W+DX,R.atk.base*H+DY);
+    c.fillText((a?'ATK/'+a:'')+(a&&d?'\u3000':'')+(d?'DEF/'+d:''),R.atk.right*W+DX,R.atk.base*H+DY);
     c.textAlign='left';
   }
   const nu=$('#tNum').value.trim();
@@ -599,6 +685,18 @@ function buildHole(){
   }catch(e){holeCv=null;}
 }
 function composeMask(c){
+  if(maskNameOnly){                       // 名前だけを箔押しする用
+    drawCardBase(c,'#000');
+    const nm=$('#tName').value.trim();
+    if(nm){
+      const sz=R.name.size*H*(+$('#nSz').value/100);
+      c.save();c.fillStyle='#fff';c.font='700 '+sz+'px '+F[jpFont];
+      c.textBaseline='alphabetic';c.textAlign='left';
+      c.fillText(nm,R.name.x*W+tdx/1000*W,R.name.base*H+tdy/1000*H);
+      c.restore();
+    }
+    return;
+  }
   drawWhiteCard(c);
   const bi=bgMask||bgImg, si=subjMask||subjImg;
   if(bi&&win.w>0){c.save();c.beginPath();c.rect(win.x,win.y,win.w,win.h);c.clip();
@@ -615,10 +713,11 @@ function composeMask(c){
     }else drawLayer(c,si,subjT);
     if(clipBottom)c.restore();
   }
-  if(maskBox){
-    c.fillStyle='#000';
+  if(maskBoxMode!=='auto'){
+    c.fillStyle=(maskBoxMode==='black')?'#000':'#fff';
     c.fillRect(R.boxOut[0]*W,R.boxOut[1]*H,(R.boxOut[2]-R.boxOut[0])*W,(R.boxOut[3]-R.boxOut[1])*H);
   }
+  if(maskRing&&!maskFrameBlack)drawCardRing(c,'#000');
   if(maskMarks)drawMaskMarks(c);
   if(maskText){const keep=tcol,ns=nameStyle;tcol='#000';nameStyle='black';
     drawText(c);tcol=keep;nameStyle=ns;}
@@ -1028,9 +1127,13 @@ document.querySelectorAll('[data-layer]').forEach(function(b){b.onclick=function
   document.querySelectorAll('[data-layer]').forEach(function(o){o.classList.remove('on');});
   b.classList.add('on');layer=b.dataset.layer;syncPlace();render();};});
 $('#mkOn').onchange=function(e){maskMode=e.target.checked;render();};
-$('#mkBox').onchange=function(e){maskBox=e.target.checked;render();};
+document.querySelectorAll('[data-mkbox]').forEach(function(b){b.onclick=function(){
+  document.querySelectorAll('[data-mkbox]').forEach(function(o){o.classList.remove('on');});
+  b.classList.add('on');maskBoxMode=b.dataset.mkbox;render();};});
 $('#mkFrame').onchange=function(e){maskFrameBlack=e.target.checked;render();};
 $('#mkMarks').onchange=function(e){maskMarks=e.target.checked;render();};
+$('#mkRing').onchange=function(e){maskRing=e.target.checked;render();};
+$('#mkName').onchange=function(e){maskNameOnly=e.target.checked;render();};
 $('#mkText').onchange=function(e){maskText=e.target.checked;render();};
 let mkTarget='bg';
 $('#mkBg').onclick=function(){mkTarget='bg';$('#fMask2').click();};
@@ -1193,6 +1296,8 @@ sl('#stSz','#stSzv',function(v){stSz=v/100;});
 sl('#stY','#stYv',function(v){stY=v/1000;},function(v){return '.'+v;});
 sl('#stG','#stGv',function(v){stG=v/100;});
 sl('#nSz','#nSzv',function(v){});
+sl('#nTr','#nTrv',function(v){nameTrack=v/100;});
+sl('#eCd','#eCdv',function(v){effCond=v/100;});
 sl('#eSz','#eSzv',function(v){});
 sl('#tX','#tXv',function(v){tdx=v;});
 sl('#tY','#tYv',function(v){tdy=v;});
@@ -1225,9 +1330,24 @@ document.querySelectorAll('[data-nc]').forEach(function(b){b.onclick=function(){
   b.classList.add('on');nameStyle=b.dataset.nc;render();};});
 ['#tName','#tType','#tEff','#tAtk','#tDef','#tNum'].forEach(function(id){
   $(id).addEventListener('input',render);});
-function fbtn(id,other,val){$(id).onclick=function(){jpFont=val;
-  $(id).classList.add('on');$(other).classList.remove('on');render();};}
-fbtn('#fMincho','#fGothic','mincho');fbtn('#fGothic','#fMincho','gothic');
+document.querySelectorAll('[data-font]').forEach(function(b){b.onclick=function(){
+  document.querySelectorAll('[data-font]').forEach(function(o){o.classList.remove('on');});
+  b.classList.add('on');jpFont=b.dataset.font;render();};});
+$('#loadFont').onclick=function(){$('#fFont').click();};
+$('#fFont').onchange=function(e){
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=function(){
+    try{
+      const ff=new FontFace('CardCustom',r.result);
+      ff.load().then(function(x){document.fonts.add(x);
+        document.querySelectorAll('[data-font]').forEach(function(o){o.classList.remove('on');});
+        $('#loadFont').classList.add('on');jpFont='custom';render();})
+        .catch(function(){alert('このフォントは読み込めませんでした');});
+    }catch(err){alert('このフォントは読み込めませんでした');}
+  };
+  r.readAsArrayBuffer(f);e.target.value='';
+};
 $('#cBlack').onclick=function(){tcol='#000';
   $('#cBlack').classList.add('on');$('#cWhite').classList.remove('on');render();};
 $('#cWhite').onclick=function(){tcol='#fff';
@@ -1361,6 +1481,8 @@ $('#sheet').onclick=function(e){if(e.target===$('#sheet'))$('#sheet').classList.
   }
   document.querySelector('footer').classList.add('closed');
   resize();fit();
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(function(){render();});
+  setTimeout(render,1200);
 })();
 addEventListener('resize',resize);
 addEventListener('orientationchange',function(){setTimeout(fitResize,120);});
