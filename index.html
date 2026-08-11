@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>カードメーカー</title>
+<style>
+:root{--ink:#16130F;--panel:#221D17;--panel2:#2C251C;--line:#3B3226;
+  --amber:#E8A33D;--text:#E6DFD3;--dim:#948977}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--ink);color:var(--text);
+  font-family:system-ui,-apple-system,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+  -webkit-user-select:none;user-select:none}
+#app{display:flex;flex-direction:column;height:100dvh}
+header{display:flex;align-items:center;gap:6px;padding:9px 12px;background:var(--panel);
+  border-bottom:1px solid var(--line);flex:0 0 auto}
+h1{margin:0;font-size:11px;font-weight:700;letter-spacing:.16em;color:var(--amber)}
+.spacer{flex:1}
+button{font-family:inherit;cursor:pointer;border:0}
+.btn{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:7px;
+  padding:9px 12px;font-size:13px;white-space:nowrap}
+.btn:active{background:#3A3125}
+.btn.on{background:var(--amber);color:#1A1409;border-color:var(--amber);font-weight:700}
+.btn:disabled{opacity:.3}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--dim);padding:8px 7px}
+.btn.sm{padding:7px 9px;font-size:12px}
+
+#stage{flex:1;position:relative;overflow:hidden;touch-action:none;
+  background:repeating-conic-gradient(#1E1A15 0% 25%,#221D17 0% 50%) 50%/22px 22px}
+#view{position:absolute;inset:0;display:block}
+#empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  text-align:center;padding:28px;color:var(--dim);font-size:14px;line-height:1.9}
+#dot{position:absolute;border:1.5px solid var(--amber);border-radius:50%;pointer-events:none;
+  display:none;transform:translate(-50%,-50%)}
+
+footer{flex:0 0 auto;background:var(--panel);border-top:1px solid var(--line);
+  padding:8px 10px calc(10px + env(safe-area-inset-bottom));max-height:58dvh;overflow-y:auto}
+.bar{display:flex;gap:7px;align-items:center}
+.bar+.bar{margin-top:7px}
+.tabs{display:flex;gap:5px}
+.tabs .btn{flex:1;text-align:center;padding:9px 2px;font-size:12px}
+.tools{display:flex;gap:6px;flex:1}
+.tools .btn{flex:1;text-align:center;padding:8px 4px;font-size:12px}
+#ink{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex:0 0 auto}
+#ink button{padding:8px 12px;font-size:12px;font-weight:600;background:var(--panel2);color:var(--dim)}
+#ink button.on[data-ink=w]{background:#F2EFE8;color:#141210}
+#ink button.on[data-ink=b]{background:#0B0B0B;color:#F2EFE8;box-shadow:inset 0 0 0 1px #55493A}
+label.sl{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--dim);flex:1;min-width:0}
+input[type=range]{flex:1;accent-color:var(--amber);min-width:40px}
+label.sl b{color:var(--text);font-variant-numeric:tabular-nums;width:40px;text-align:right;font-size:11px}
+#hint{font-size:11px;color:var(--dim);margin-top:7px;line-height:1.5}
+input[type=file]{display:none}
+.panel{display:none;padding-top:2px}.panel.on{display:block}
+.lab{font-size:11px;color:var(--dim);margin:8px 0 2px;letter-spacing:.06em;display:flex;align-items:center;gap:4px}
+
+.strip{display:flex;gap:6px;overflow-x:auto;padding:4px 0;scrollbar-width:none;min-height:58px}
+.strip::-webkit-scrollbar{display:none}
+.thumb{flex:0 0 auto;width:52px;height:52px;border:2px solid var(--line);border-radius:7px;
+  background:#0D0B09 repeating-conic-gradient(#1E1A15 0% 25%,#141210 0% 50%) 50%/10px 10px;
+  object-fit:contain;cursor:pointer}
+.thumb.on{border-color:var(--amber)}
+
+.fld{display:flex;align-items:center;gap:8px;margin-top:6px}
+.fld span{font-size:11px;color:var(--dim);width:54px;flex:0 0 auto}
+input[type=text],textarea{flex:1;min-width:0;background:var(--panel2);color:var(--text);
+  border:1px solid var(--line);border-radius:6px;padding:8px;font-family:inherit;font-size:13px;
+  -webkit-user-select:auto;user-select:auto}
+textarea{resize:vertical;min-height:80px;line-height:1.5}
+.chk{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--dim)}
+
+#sheet{position:fixed;inset:0;background:rgba(10,8,6,.88);display:none;
+  align-items:center;justify-content:center;padding:18px;z-index:20}
+#sheet.on{display:flex}
+#sheet .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  padding:16px;max-width:420px;width:100%;max-height:92dvh;overflow:auto;text-align:center}
+#sheet .ttl{font-size:12px;letter-spacing:.14em;color:var(--amber);font-weight:700;margin-bottom:12px}
+#sheet img{width:100%;max-height:56dvh;object-fit:contain;border-radius:8px;border:1px solid var(--line);
+  -webkit-user-select:auto;user-select:auto;-webkit-touch-callout:default}
+#sheet .note{font-size:11px;color:var(--dim);margin:10px 0 14px;line-height:1.6}
+#sheet .acts{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+#sheet a.btn{text-decoration:none;display:inline-block}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>カードメーカー</h1>
+    <div class="spacer"></div>
+    <button class="btn sm" id="openIll">イラスト</button>
+    <button class="btn sm" id="fit">全体</button>
+    <button class="btn sm" id="save">書き出し</button>
+  </header>
+
+  <div id="stage">
+    <canvas id="view"></canvas>
+    <div id="dot"></div>
+    <div id="empty">「素材」タブで枠を読み込むと始まります<br>GitHubのフォルダからも読めます</div>
+  </div>
+
+  <footer>
+    <div class="bar tabs">
+      <button class="btn" data-tab="mat">素材</button>
+      <button class="btn on" data-tab="place">配置</button>
+      <button class="btn" data-tab="win">窓</button>
+      <button class="btn" data-tab="pop">はみ出し</button>
+      <button class="btn" data-tab="txt">文字</button>
+    </div>
+
+    <!-- 素材 -->
+    <div class="panel" id="pMat">
+      <div class="lab">GitHubの素材
+        <button class="btn ghost sm" id="ghLoad">読み込む</button>
+        <span id="ghMsg" style="font-size:11px;color:var(--dim)"></span></div>
+      <div class="fld"><span>リポジトリ</span><input type="text" id="ghRepo" placeholder="akkyommm-crypto/card-assets"></div>
+      <div class="fld"><span>ブランチ</span><input type="text" id="ghBranch" placeholder="main" style="flex:1">
+        <input type="text" id="ghPath" placeholder="assets" style="flex:1"></div>
+
+      <div class="lab">カード枠
+        <button class="btn ghost sm" id="addFrame">＋追加</button>
+        <button class="btn ghost sm" id="delFrame">選択を削除</button></div>
+      <div class="strip" id="sFrame"></div>
+
+      <div class="lab">属性アイコン
+        <button class="btn ghost sm" id="addAttr">＋追加</button>
+        <button class="btn ghost sm" id="delAttr">削除</button>
+        <button class="btn ghost sm" id="noAttr">使わない</button></div>
+      <div class="strip" id="sAttr"></div>
+      <div class="bar">
+        <label class="sl">大きさ<input type="range" id="aSz" min="30" max="220" value="100"><b id="aSzv">100</b></label>
+        <label class="sl">横<input type="range" id="aX" min="700" max="990" value="884"><b id="aXv">.884</b></label>
+        <label class="sl">縦<input type="range" id="aY" min="0" max="300" value="79"><b id="aYv">.079</b></label>
+      </div>
+
+      <div class="lab">レベル星
+        <button class="btn ghost sm" id="addStar">＋追加</button>
+        <button class="btn ghost sm" id="delStar">削除</button></div>
+      <div class="strip" id="sStar"></div>
+      <div class="bar">
+        <label class="sl">個数<input type="range" id="stN" min="0" max="13" value="0"><b id="stNv">0</b></label>
+        <label class="sl">大きさ<input type="range" id="stSz" min="30" max="220" value="100"><b id="stSzv">100</b></label>
+      </div>
+      <div class="bar">
+        <label class="sl">縦<input type="range" id="stY" min="0" max="400" value="142"><b id="stYv">.142</b></label>
+        <label class="sl">間隔<input type="range" id="stG" min="40" max="180" value="100"><b id="stGv">100</b></label>
+        <label class="chk"><input type="checkbox" id="stLeft">左から</label>
+      </div>
+    </div>
+
+    <!-- 配置 -->
+    <div class="panel on" id="pPlace">
+      <div class="bar"><label class="sl">大きさ<input type="range" id="sc" min="5" max="400" value="100"><b id="scv">100%</b></label></div>
+      <div class="bar"><label class="sl">回転<input type="range" id="rot" min="-180" max="180" value="0"><b id="rotv">0°</b></label></div>
+      <div class="bar"><label class="sl">枠の濃さ<input type="range" id="fo" min="0" max="100" value="100"><b id="fov">100%</b></label></div>
+    </div>
+
+    <!-- 窓 -->
+    <div class="panel" id="pWin">
+      <div class="bar" style="font-size:12px;color:var(--dim)">画面をドラッグして窓を決める
+        <div class="spacer"></div>
+        <button class="btn ghost sm" id="winAuto">枠から自動</button>
+        <button class="btn ghost sm" id="winStd">公式位置</button>
+      </div>
+      <div class="bar"><label class="chk"><input type="checkbox" id="winAlpha" checked>
+        枠の透明な形どおりに切り抜く（四角じゃない窓に対応）</label></div>
+    </div>
+
+    <!-- はみ出し -->
+    <div class="panel" id="pPop">
+      <div class="bar">
+        <div id="ink"><button data-ink="w" class="on">出す</button><button data-ink="b">消す</button></div>
+        <div class="tools">
+          <button class="btn on" data-tool="brush">筆</button>
+          <button class="btn" data-tool="lasso">囲む</button>
+        </div>
+      </div>
+      <div class="bar">
+        <label class="sl">太さ<input type="range" id="size" min="6" max="260" value="70"><b id="szv">70</b></label>
+        <button class="btn ghost sm" id="undo" disabled>戻す</button>
+      </div>
+    </div>
+
+    <!-- 文字 -->
+    <div class="panel" id="pTxt">
+      <div class="fld"><span>カード名</span><input type="text" id="tName" placeholder="氷結界の龍 エクハジャール"></div>
+      <div class="fld"><span>種族欄</span><input type="text" id="tType" placeholder="【ドラゴン族／シンクロ／効果】"></div>
+      <div class="fld" style="align-items:flex-start"><span>効果</span><textarea id="tEff" placeholder="チューナー＋チューナー以外のモンスター1体以上&#10;このカード名の①…"></textarea></div>
+      <div class="fld"><span>ATK / DEF</span>
+        <input type="text" id="tAtk" placeholder="3000"><input type="text" id="tDef" placeholder="1000"></div>
+      <div class="fld"><span>番号</span><input type="text" id="tNum" placeholder="UT01-JP005">
+        <label class="chk"><input type="checkbox" id="numLeft">左下</label></div>
+
+      <div class="lab">書体</div>
+      <div class="bar">
+        <button class="btn sm on" id="fMincho">明朝</button>
+        <button class="btn sm" id="fGothic">ゴシック</button>
+        <div class="spacer"></div>
+        <button class="btn sm" id="cBlack">黒字</button>
+        <button class="btn sm on" id="cWhite">白字</button>
+        <label class="chk"><input type="checkbox" id="nOutline" checked>名前に縁</label>
+      </div>
+      <div class="bar">
+        <label class="sl">名前<input type="range" id="nSz" min="40" max="180" value="100"><b id="nSzv">100</b></label>
+        <label class="sl">効果<input type="range" id="eSz" min="50" max="170" value="100"><b id="eSzv">100</b></label>
+      </div>
+      <div class="bar">
+        <label class="sl">全体↔<input type="range" id="tX" min="-60" max="60" value="0"><b id="tXv">0</b></label>
+        <label class="sl">全体↕<input type="range" id="tY" min="-60" max="60" value="0"><b id="tYv">0</b></label>
+      </div>
+    </div>
+
+    <div id="hint">配置＝1本指で移動・2本指で拡大回転／窓＝ドラッグ／はみ出し＝塗った所が枠の上に出ます。</div>
+  </footer>
+</div>
+
+<div id="sheet"><div class="card">
+  <div class="ttl">できたカード</div>
+  <img id="outImg" alt="card">
+  <div class="note">画像を長押し →「写真に追加」でも保存できます</div>
+  <div class="acts">
+    <button class="btn" id="shareBtn">共有・保存</button>
+    <a class="btn" id="dlBtn" download="card.png">ダウンロード</a>
+    <button class="btn ghost" id="closeSheet">閉じる</button>
+  </div>
+</div></div>
+
+<input type="file" id="fFrame" accept="image/*" multiple>
+<input type="file" id="fAttr" accept="image/*" multiple>
+<input type="file" id="fStar" accept="image/*" multiple>
+<input type="file" id="fIll" accept="image/*">
+
+<script>
+const $=s=>document.querySelector(s);
+const view=$('#view'),vctx=view.getContext('2d'),stage=$('#stage'),dot=$('#dot');
+
+/* 公式カード（462×674）から実測した配置比率 */
+const R={
+  win :[0.1212,0.1706,0.8788,0.7181],
+  attr:{x:0.8842,y:0.0794,r:0.0465},
+  star:{y:0.1424,r:0.0260,right:0.8593,gap:0.0663},
+  name:{x:0.0823,base:0.1053,size:0.0556},
+  type:{x:0.0779,base:0.7730,size:0.0178},
+  eff :{x:0.0801,base:0.7953,lh:0.0217,w:0.8355,size:0.0142,bottom:0.9036},
+  atk :{right:0.9156,base:0.9332,size:0.0254},
+  num :{right:0.8896,base:0.7344,size:0.0110,lx:0.0180,lbase:0.9974}
+};
+const F={
+  mincho:'"Hiragino Mincho ProN","Yu Mincho","YuMincho","MS Mincho","Noto Serif JP",serif',
+  gothic:'"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo","Noto Sans JP",sans-serif',
+  serif :'"Times New Roman",Georgia,"Hiragino Mincho ProN",serif'
+};
+
+let frames=[],attrs=[],stars=[];
+let fi=-1,ai=-1,si=-1;
+let frameImg=null,illImg=null,W=0,H=0;
+let il={x:0,y:0,s:1,rot:0};
+let win={x:0,y:0,w:0,h:0};
+let popCv=null,popCtx=null,workCv=null;
+let vs=1,vx=0,vy=0;
+let tab='place',tool='brush',ink='w',brush=70,frameOp=1;
+let jpFont='mincho',tcol='#fff';
+let attrSz=1,attrX=R.attr.x,attrY=R.attr.y;
+let stN=0,stSz=1,stY=R.star.y,stG=1,stLeft=false;
+let tdx=0,tdy=0;
+const undoS=[];let lasso=[];
+
+/* ---------- 保存（IndexedDB） ---------- */
+let db=null;
+function openDB(){return new Promise(function(res){
+  try{
+    const rq=indexedDB.open('cardmaker',1);
+    rq.onupgradeneeded=function(){rq.result.createObjectStore('assets');};
+    rq.onsuccess=function(){db=rq.result;res();};
+    rq.onerror=function(){res();};
+  }catch(e){res();}
+});}
+function idbSet(k,v){try{if(db)db.transaction('assets','readwrite').objectStore('assets').put(v,k);}catch(e){}}
+function idbGet(k){return new Promise(function(res){
+  try{
+    if(!db)return res(null);
+    const r=db.transaction('assets','readonly').objectStore('assets').get(k);
+    r.onsuccess=function(){res(r.result||null);};r.onerror=function(){res(null);};
+  }catch(e){res(null);}
+});}
+function persist(){
+  const loc=function(a){return a.filter(function(i){return !i._remote;})
+                          .map(function(i){return i.src;});};
+  idbSet('frames',loc(frames));idbSet('attrs',loc(attrs));idbSet('stars',loc(stars));
+}
+
+/* ---------- 表示 ---------- */
+function resize(){
+  const r=stage.getBoundingClientRect(),d=Math.min(devicePixelRatio||1,2);
+  view.width=r.width*d;view.height=r.height*d;
+  view.style.width=r.width+'px';view.style.height=r.height+'px';
+  vctx.setTransform(d,0,0,d,0,0);render();
+}
+function fit(){
+  if(!W)return;
+  const r=stage.getBoundingClientRect();
+  vs=Math.min(r.width/W,r.height/H)*0.94;
+  vx=(r.width-W*vs)/2;vy=(r.height-H*vs)/2;render();
+}
+function drawIll(c){
+  if(!illImg)return;
+  c.save();c.translate(il.x,il.y);c.rotate(il.rot*Math.PI/180);c.scale(il.s,il.s);
+  c.drawImage(illImg,-illImg.naturalWidth/2,-illImg.naturalHeight/2);c.restore();
+}
+const NG='、。，．）」』】〕〉》〟’”ぁぃぅぇぉっゃゅょゎヵヶァィゥェォッャュョー―…！？：；';
+function wrap(c,text,maxw){
+  const out=[];
+  text.split('\n').forEach(function(p){
+    let line='';
+    for(let i=0;i<p.length;i++){
+      const ch=p[i];
+      if(line&&c.measureText(line+ch).width>maxw){
+        if(NG.indexOf(ch)>=0){out.push(line+ch);line='';continue;}
+        out.push(line);line=ch;
+      }else line+=ch;
+    }
+    out.push(line);
+  });
+  return out;
+}
+function drawText(c){
+  if(!W)return;
+  const DX=tdx/1000*W,DY=tdy/1000*H;
+  c.textBaseline='alphabetic';c.textAlign='left';c.fillStyle=tcol;
+  const nm=$('#tName').value.trim();
+  if(nm){
+    const sz=R.name.size*H*(+$('#nSz').value/100);
+    c.font='700 '+sz+'px '+F[jpFont];
+    if($('#nOutline').checked){
+      c.lineJoin='round';c.lineWidth=sz*0.10;
+      c.strokeStyle=(tcol==='#fff')?'rgba(0,0,0,.85)':'rgba(255,255,255,.85)';
+      c.strokeText(nm,R.name.x*W+DX,R.name.base*H+DY);
+    }
+    c.fillText(nm,R.name.x*W+DX,R.name.base*H+DY);
+  }
+  const ty=$('#tType').value.trim();
+  if(ty){c.font=(R.type.size*H)+'px '+F[jpFont];
+    c.fillText(ty,R.type.x*W+DX,R.type.base*H+DY);}
+  const ef=$('#tEff').value;
+  if(ef.trim()){
+    const k=+$('#eSz').value/100;
+    let sz=R.eff.size*H*k,lh=R.eff.lh*H*k,lines;
+    for(let n=0;n<16;n++){
+      c.font=sz+'px '+F[jpFont];
+      lines=wrap(c,ef,R.eff.w*W);
+      if(R.eff.base*H+(lines.length-1)*lh<=R.eff.bottom*H)break;
+      sz*=0.95;lh*=0.95;
+    }
+    lines.forEach(function(l,i){c.fillText(l,R.eff.x*W+DX,R.eff.base*H+i*lh+DY);});
+  }
+  const a=$('#tAtk').value.trim(),d=$('#tDef').value.trim();
+  if(a||d){
+    c.font='700 '+(R.atk.size*H)+'px '+F.serif;c.textAlign='right';
+    c.fillText((a?'ATK/'+a:'')+(a&&d?'  ':'')+(d?'DEF/'+d:''),R.atk.right*W+DX,R.atk.base*H+DY);
+    c.textAlign='left';
+  }
+  const nu=$('#tNum').value.trim();
+  if(nu){
+    c.font=(R.num.size*H*1.4)+'px '+F.serif;
+    if($('#numLeft').checked){c.fillText(nu,R.num.lx*W+DX,R.num.lbase*H+DY);}
+    else{c.textAlign='right';c.fillText(nu,R.num.right*W+DX,R.num.base*H+DY);c.textAlign='left';}
+  }
+}
+function drawAttr(c){
+  if(ai<0||!attrs[ai])return;
+  const im=attrs[ai],d=R.attr.r*2*W*attrSz;
+  const h=d*im.naturalHeight/im.naturalWidth;
+  c.drawImage(im,attrX*W-d/2,attrY*H-h/2,d,h);
+}
+function drawStars(c){
+  if(si<0||!stars[si]||stN<=0)return;
+  const im=stars[si],d=R.star.r*2*W*stSz,h=d*im.naturalHeight/im.naturalWidth;
+  const gap=R.star.gap*W*stG;
+  for(let i=0;i<stN;i++){
+    const cx=stLeft?(1-R.star.right)*W+i*gap:R.star.right*W-i*gap;
+    c.drawImage(im,cx-d/2,stY*H-h/2,d,h);
+  }
+}
+/* 枠の透明部分＝イラストの窓 としてマスクを作る */
+let holeCv=null,work2=null;
+function buildHole(){
+  holeCv=null;
+  if(!frameImg||!W)return;
+  try{
+    const c=document.createElement('canvas');c.width=W;c.height=H;
+    const cc=c.getContext('2d',{willReadFrequently:true});
+    cc.drawImage(frameImg,0,0,W,H);
+    const im=cc.getImageData(0,0,W,H),d=im.data;
+    let any=false;
+    for(let i=0;i<d.length;i+=4){
+      const a=d[i+3];
+      d[i]=d[i+1]=d[i+2]=255;
+      d[i+3]=255-a;
+      if(a<40)any=true;
+    }
+    if(!any)return;
+    cc.putImageData(im,0,0);
+    holeCv=c;
+  }catch(e){holeCv=null;}
+}
+function compose(c){
+  c.clearRect(0,0,W,H);
+  if(illImg&&win.w>0){
+    if($('#winAlpha').checked&&holeCv){
+      if(!work2){work2=document.createElement('canvas');work2.width=W;work2.height=H;}
+      const w2=work2.getContext('2d');
+      w2.globalCompositeOperation='source-over';w2.clearRect(0,0,W,H);
+      w2.save();w2.beginPath();w2.rect(win.x,win.y,win.w,win.h);w2.clip();drawIll(w2);w2.restore();
+      w2.globalCompositeOperation='destination-in';w2.drawImage(holeCv,0,0);
+      w2.globalCompositeOperation='source-over';
+      c.drawImage(work2,0,0);
+    }else{
+      c.save();c.beginPath();c.rect(win.x,win.y,win.w,win.h);c.clip();drawIll(c);c.restore();
+    }
+  }
+  if(frameImg){c.globalAlpha=frameOp;c.drawImage(frameImg,0,0,W,H);c.globalAlpha=1;}
+  drawAttr(c);drawStars(c);
+  if(illImg&&popCv){
+    const wc=workCv.getContext('2d');
+    wc.globalCompositeOperation='source-over';wc.clearRect(0,0,W,H);
+    drawIll(wc);
+    wc.globalCompositeOperation='destination-in';wc.drawImage(popCv,0,0);
+    wc.globalCompositeOperation='source-over';
+    c.drawImage(workCv,0,0);
+  }
+  drawText(c);
+}
+function render(){
+  if(!W)return;
+  const r=stage.getBoundingClientRect();
+  vctx.clearRect(0,0,r.width,r.height);
+  vctx.save();vctx.translate(vx,vy);vctx.scale(vs,vs);
+  vctx.fillStyle='#000';vctx.fillRect(0,0,W,H);
+  compose(vctx);
+  if(tab==='win'&&win.w>0){
+    vctx.strokeStyle='#E8A33D';vctx.lineWidth=2/vs;vctx.setLineDash([9/vs,7/vs]);
+    vctx.strokeRect(win.x,win.y,win.w,win.h);vctx.setLineDash([]);
+  }
+  if(lasso.length>1){
+    vctx.strokeStyle='#E8A33D';vctx.lineWidth=2/vs;vctx.setLineDash([8/vs,6/vs]);
+    vctx.beginPath();vctx.moveTo(lasso[0].x,lasso[0].y);
+    for(let i=1;i<lasso.length;i++)vctx.lineTo(lasso[i].x,lasso[i].y);
+    vctx.closePath();vctx.stroke();vctx.setLineDash([]);
+  }
+  vctx.restore();
+}
+function toImg(cx,cy){const r=stage.getBoundingClientRect();
+  return{x:(cx-r.left-vx)/vs,y:(cy-r.top-vy)/vs};}
+
+/* ---------- はみ出し ---------- */
+function initPop(){
+  popCv=document.createElement('canvas');popCv.width=W;popCv.height=H;
+  popCtx=popCv.getContext('2d',{willReadFrequently:true});
+  workCv=document.createElement('canvas');workCv.width=W;workCv.height=H;
+  undoS.length=0;$('#undo').disabled=true;
+}
+function snap(){
+  if(!popCtx)return;
+  const n=W*H,d=popCtx.getImageData(0,0,W,H).data,b=new Uint8Array((n+7)>>3);
+  for(let i=0;i<n;i++)if(d[i*4+3]>127)b[i>>3]|=1<<(i&7);
+  undoS.push(b);if(undoS.length>30)undoS.shift();$('#undo').disabled=false;
+}
+$('#undo').onclick=function(){
+  const b=undoS.pop();if(!b)return;
+  const im=popCtx.createImageData(W,H),d=im.data,n=W*H;
+  for(let i=0;i<n;i++){const v=((b[i>>3]>>(i&7))&1)?255:0;
+    d[i*4]=d[i*4+1]=d[i*4+2]=255;d[i*4+3]=v;}
+  popCtx.putImageData(im,0,0);
+  if(!undoS.length)$('#undo').disabled=true;render();
+};
+function popStroke(a,b){
+  popCtx.globalCompositeOperation=(ink==='w')?'source-over':'destination-out';
+  popCtx.strokeStyle=popCtx.fillStyle='#fff';
+  popCtx.lineWidth=brush;popCtx.lineCap='round';popCtx.lineJoin='round';
+  popCtx.beginPath();
+  if(b){popCtx.moveTo(a.x,a.y);popCtx.lineTo(b.x,b.y);popCtx.stroke();}
+  else{popCtx.arc(a.x,a.y,brush/2,0,7);popCtx.fill();}
+  popCtx.globalCompositeOperation='source-over';
+}
+function popLasso(){
+  if(lasso.length<3){lasso=[];render();return;}
+  popCtx.globalCompositeOperation=(ink==='w')?'source-over':'destination-out';
+  popCtx.fillStyle='#fff';popCtx.beginPath();
+  popCtx.moveTo(lasso[0].x,lasso[0].y);
+  for(let i=1;i<lasso.length;i++)popCtx.lineTo(lasso[i].x,lasso[i].y);
+  popCtx.closePath();popCtx.fill();
+  popCtx.globalCompositeOperation='source-over';lasso=[];render();
+}
+
+/* ---------- 窓 ---------- */
+$('#winStd').onclick=function(){
+  if(!W)return;
+  win={x:R.win[0]*W,y:R.win[1]*H,w:(R.win[2]-R.win[0])*W,h:(R.win[3]-R.win[1])*H};render();
+};
+$('#winAuto').onclick=function(){
+  if(!frameImg)return;
+  const c=document.createElement('canvas');c.width=W;c.height=H;
+  const cc=c.getContext('2d',{willReadFrequently:true});cc.drawImage(frameImg,0,0,W,H);
+  let d;try{d=cc.getImageData(0,0,W,H).data;}catch(e){return $('#winStd').click();}
+  const n=W*H,tr=new Uint8Array(n);
+  for(let i=0;i<n;i++)if(d[i*4+3]<40)tr[i]=1;
+  // 画像の端に接しない透明領域のうち最大のものを窓とみなす（角丸を拾わない）
+  const seen=new Uint8Array(n);let best=null;
+  for(let p=0;p<n;p++){
+    if(!tr[p]||seen[p])continue;
+    const st=[p];seen[p]=1;
+    let x0=W,y0=H,x1=-1,y1=-1,cnt=0,edge=false;
+    while(st.length){
+      const q=st.pop();cnt++;
+      const x=q%W,y=(q/W)|0;
+      if(x===0||y===0||x===W-1||y===H-1)edge=true;
+      if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;
+      if(x>0&&tr[q-1]&&!seen[q-1]){seen[q-1]=1;st.push(q-1);}
+      if(x<W-1&&tr[q+1]&&!seen[q+1]){seen[q+1]=1;st.push(q+1);}
+      if(y>0&&tr[q-W]&&!seen[q-W]){seen[q-W]=1;st.push(q-W);}
+      if(y<H-1&&tr[q+W]&&!seen[q+W]){seen[q+W]=1;st.push(q+W);}
+    }
+    if(!edge&&cnt>W*H*0.02&&(!best||cnt>best.cnt))
+      best={cnt:cnt,x:x0,y:y0,w:x1-x0+1,h:y1-y0+1};
+  }
+  if(best)win={x:best.x,y:best.y,w:best.w,h:best.h};
+  else $('#winStd').click();
+  render();
+};
+
+/* ---------- 素材 ---------- */
+function toDataURL(f){return new Promise(function(res){
+  const r=new FileReader();r.onload=function(){res(r.result);};r.readAsDataURL(f);});}
+function mkImg(src,remote){return new Promise(function(res){
+  const im=new Image();
+  if(remote)im.crossOrigin='anonymous';
+  im.onload=function(){im._remote=!!remote;res(im);};
+  im.onerror=function(){res(null);};im.src=src;});}
+
+/* GitHub から素材を読む（フォルダに置くだけで増える） */
+async function ghList(repo,branch,path){
+  try{
+    const u='https://api.github.com/repos/'+repo+'/contents/'+path+'?ref='+encodeURIComponent(branch);
+    const r=await fetch(u);
+    if(!r.ok)return null;
+    const j=await r.json();
+    if(!Array.isArray(j))return null;
+    return j.filter(function(f){return f.type==='file'&&/\.(png|jpe?g|webp|gif)$/i.test(f.name);})
+            .sort(function(a,b){return a.name.localeCompare(b.name);});
+  }catch(e){return null;}
+}
+async function ghLoadAll(quiet){
+  const repo=$('#ghRepo').value.trim();
+  if(!repo){if(!quiet)$('#ghMsg').textContent='リポジトリ名を入れてください';return;}
+  const branch=$('#ghBranch').value.trim()||'main';
+  const base=$('#ghPath').value.trim()||'assets';
+  $('#ghMsg').textContent='読み込み中…';
+  const cats=[[['frames','frame','枠'],frames,'#sFrame',pickFrame],
+              [['attrs','attributes','attr','属性'],attrs,'#sAttr',pickAttr],
+              [['stars','star','levels','星'],stars,'#sStar',pickStar]];
+  let n=0,hit=0;
+  for(const c of cats){
+    let files=null;
+    for(const nm of c[0]){
+      files=await ghList(repo,branch,base?base+'/'+nm:nm);
+      if(files){hit++;break;}
+    }
+    if(!files)continue;
+    for(const f of files){
+      if(c[1].some(function(i){return i.src===f.download_url;}))continue;
+      const im=await mkImg(f.download_url,true);
+      if(im){c[1].push(im);n++;}
+    }
+    rebuild(c[1],c[2],c[3]);
+  }
+  idbSet('gh',{repo:repo,branch:branch,path:base});
+  if(!hit)$('#ghMsg').textContent='フォルダが見つかりません（frames / attrs / stars）';
+  else $('#ghMsg').textContent=n?('＋'+n+'枚'):'新しい素材なし';
+  if(frames.length&&fi<0)pickFrame(0);
+  render();
+}
+$('#ghLoad').onclick=function(){ghLoadAll(false);};
+async function addFiles(files,arr,strip,pick){
+  for(const f of Array.from(files)){
+    const u=await toDataURL(f),im=await mkImg(u);
+    if(im)arr.push(im);
+  }
+  rebuild(arr,strip,pick);persist();pick(arr.length-1);
+}
+function rebuild(arr,stripSel,pick){
+  const st=$(stripSel);st.innerHTML='';
+  arr.forEach(function(im,i){
+    const t=document.createElement('img');
+    t.className='thumb';t.src=im.src;
+    t.onclick=function(){pick(i);};
+    st.appendChild(t);
+  });
+}
+function mark(sel,i){document.querySelectorAll(sel+' .thumb')
+  .forEach(function(t,k){t.classList.toggle('on',k===i);});}
+function pickFrame(i){
+  if(i<0||!frames[i]){fi=-1;frameImg=null;mark('#sFrame',-1);return;}
+  fi=i;frameImg=frames[i];mark('#sFrame',i);
+  const nw=frameImg.naturalWidth,nh=frameImg.naturalHeight;
+  if(nw!==W||nh!==H){W=nw;H=nh;work2=null;initPop();buildHole();$('#winAuto').click();fit();}
+  else buildHole();
+  $('#empty').style.display='none';render();
+}
+function pickAttr(i){ai=(attrs[i]?i:-1);mark('#sAttr',ai);render();}
+function pickStar(i){
+  si=(stars[i]?i:-1);mark('#sStar',si);
+  if(si>=0&&stN===0){stN=8;$('#stN').value=8;$('#stNv').textContent=8;}
+  render();
+}
+$('#addFrame').onclick=function(){$('#fFrame').click();};
+$('#addAttr').onclick=function(){$('#fAttr').click();};
+$('#addStar').onclick=function(){$('#fStar').click();};
+$('#noAttr').onclick=function(){ai=-1;mark('#sAttr',-1);render();};
+$('#delFrame').onclick=function(){if(fi<0)return;frames.splice(fi,1);
+  rebuild(frames,'#sFrame',pickFrame);persist();pickFrame(Math.min(fi,frames.length-1));};
+$('#delAttr').onclick=function(){if(ai<0)return;attrs.splice(ai,1);
+  rebuild(attrs,'#sAttr',pickAttr);persist();pickAttr(Math.min(ai,attrs.length-1));};
+$('#delStar').onclick=function(){if(si<0)return;stars.splice(si,1);
+  rebuild(stars,'#sStar',pickStar);persist();pickStar(Math.min(si,stars.length-1));};
+$('#fFrame').onchange=function(e){addFiles(e.target.files,frames,'#sFrame',pickFrame);e.target.value='';};
+$('#fAttr').onchange=function(e){addFiles(e.target.files,attrs,'#sAttr',pickAttr);e.target.value='';};
+$('#fStar').onchange=function(e){addFiles(e.target.files,stars,'#sStar',pickStar);e.target.value='';};
+$('#openIll').onclick=function(){if(W)$('#fIll').click();else alert('先に枠を読み込んでください');};
+$('#fIll').onchange=function(e){
+  const f=e.target.files[0];if(!f)return;
+  const im=new Image();
+  im.onload=function(){
+    illImg=im;
+    const k=Math.max(win.w/im.naturalWidth,win.h/im.naturalHeight);
+    il={x:win.x+win.w/2,y:win.y+win.h/2,s:k,rot:0};
+    $('#sc').value=Math.round(k*100);$('#scv').textContent=Math.round(k*100)+'%';
+    $('#rot').value=0;$('#rotv').textContent='0°';render();
+  };
+  im.src=URL.createObjectURL(f);e.target.value='';
+};
+
+/* ---------- 入力 ---------- */
+const pts=new Map();
+let drag=null,painting=false,last=null,winDrag=null;
+stage.addEventListener('pointerdown',function(e){
+  if(!W)return;
+  stage.setPointerCapture(e.pointerId);
+  pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pts.size===2){
+    painting=false;lasso=[];winDrag=null;
+    const v=[...pts.values()],a=v[0],b=v[1];
+    drag={d:Math.hypot(a.x-b.x,a.y-b.y),ang:Math.atan2(b.y-a.y,b.x-a.x),
+          s:il.s,rot:il.rot,vs:vs,cx:(a.x+b.x)/2,cy:(a.y+b.y)/2,vx:vx,vy:vy};
+    render();return;
+  }
+  const p=toImg(e.clientX,e.clientY);
+  if(tab==='place'){drag={move:true,x:e.clientX,y:e.clientY,ix:il.x,iy:il.y};return;}
+  if(tab==='win'){winDrag={x:p.x,y:p.y};return;}
+  if(tab==='pop'){
+    if(!popCtx)initPop();
+    snap();painting=true;last=p;
+    if(tool==='lasso')lasso=[p];else popStroke(p);
+    render();return;
+  }
+  drag={pan:true,x:e.clientX,y:e.clientY,vx:vx,vy:vy};
+});
+stage.addEventListener('pointermove',function(e){
+  if(!W)return;
+  if(pts.has(e.pointerId))pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pts.size===2&&drag&&!drag.move&&!drag.pan){
+    const v=[...pts.values()],a=v[0],b=v[1];
+    const d=Math.hypot(a.x-b.x,a.y-b.y),ang=Math.atan2(b.y-a.y,b.x-a.x);
+    if(tab==='place'){
+      il.s=Math.max(.02,drag.s*(d/drag.d));
+      il.rot=drag.rot+(ang-drag.ang)*180/Math.PI;
+      $('#sc').value=Math.round(il.s*100);$('#scv').textContent=Math.round(il.s*100)+'%';
+      $('#rot').value=Math.round(il.rot);$('#rotv').textContent=Math.round(il.rot)+'°';
+    }else{
+      const r=stage.getBoundingClientRect(),cx=(a.x+b.x)/2,cy=(a.y+b.y)/2;
+      vs=Math.max(.05,drag.vs*(d/drag.d));
+      vx=cx-r.left-(drag.cx-r.left-drag.vx)*(vs/drag.vs);
+      vy=cy-r.top-(drag.cy-r.top-drag.vy)*(vs/drag.vs);
+    }
+    render();return;
+  }
+  if(tab==='pop'&&tool==='brush'&&!painting){
+    const r=stage.getBoundingClientRect();
+    dot.style.display='block';
+    dot.style.left=(e.clientX-r.left)+'px';dot.style.top=(e.clientY-r.top)+'px';
+    dot.style.width=dot.style.height=(brush*vs)+'px';
+  }
+  if(drag&&drag.move&&pts.size===1){
+    il.x=drag.ix+(e.clientX-drag.x)/vs;il.y=drag.iy+(e.clientY-drag.y)/vs;render();return;}
+  if(drag&&drag.pan&&pts.size===1){
+    vx=drag.vx+e.clientX-drag.x;vy=drag.vy+e.clientY-drag.y;render();return;}
+  if(winDrag){
+    const p=toImg(e.clientX,e.clientY);
+    win={x:Math.min(winDrag.x,p.x),y:Math.min(winDrag.y,p.y),
+         w:Math.abs(p.x-winDrag.x),h:Math.abs(p.y-winDrag.y)};render();return;}
+  if(painting){
+    const p=toImg(e.clientX,e.clientY);
+    if(tool==='lasso'){lasso.push(p);render();}
+    else{popStroke(last,p);last=p;render();}
+  }
+});
+function up(e){
+  pts.delete(e.pointerId);
+  if(pts.size===0){
+    if(painting&&tool==='lasso')popLasso();
+    painting=false;drag=null;winDrag=null;
+  }
+}
+stage.addEventListener('pointerup',up);
+stage.addEventListener('pointercancel',up);
+stage.addEventListener('pointerleave',function(){dot.style.display='none';});
+stage.addEventListener('wheel',function(e){
+  if(!W)return;e.preventDefault();
+  const k=e.deltaY<0?1.12:1/1.12;
+  if(tab==='place'){
+    il.s=Math.max(.02,il.s*k);
+    $('#sc').value=Math.round(il.s*100);$('#scv').textContent=Math.round(il.s*100)+'%';
+  }else{
+    const r=stage.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
+    const ns=Math.max(.05,vs*k);vx=mx-(mx-vx)*ns/vs;vy=my-(my-vy)*ns/vs;vs=ns;
+  }
+  render();
+},{passive:false});
+
+/* ---------- UI ---------- */
+document.querySelectorAll('[data-tab]').forEach(function(b){b.onclick=function(){
+  document.querySelectorAll('[data-tab]').forEach(function(o){o.classList.remove('on');});
+  b.classList.add('on');tab=b.dataset.tab;lasso=[];dot.style.display='none';
+  const map={mat:'#pMat',place:'#pPlace',win:'#pWin',pop:'#pPop',txt:'#pTxt'};
+  Object.keys(map).forEach(function(t){$(map[t]).classList.toggle('on',tab===t);});
+  if(tab==='pop'&&!popCtx&&W)initPop();
+  render();};});
+document.querySelectorAll('[data-tool]').forEach(function(b){b.onclick=function(){
+  document.querySelectorAll('[data-tool]').forEach(function(o){o.classList.remove('on');});
+  b.classList.add('on');tool=b.dataset.tool;lasso=[];dot.style.display='none';render();};});
+document.querySelectorAll('#ink button').forEach(function(b){b.onclick=function(){
+  document.querySelectorAll('#ink button').forEach(function(o){o.classList.remove('on');});
+  b.classList.add('on');ink=b.dataset.ink;};});
+
+function sl(id,vid,fn,fmt){$(id).oninput=function(e){const v=+e.target.value;
+  $(vid).textContent=fmt?fmt(v):v;fn(v);render();};}
+sl('#sc','#scv',function(v){il.s=v/100;},function(v){return v+'%';});
+sl('#rot','#rotv',function(v){il.rot=v;},function(v){return v+'°';});
+sl('#fo','#fov',function(v){frameOp=v/100;},function(v){return v+'%';});
+sl('#size','#szv',function(v){brush=v;});
+sl('#aSz','#aSzv',function(v){attrSz=v/100;});
+sl('#aX','#aXv',function(v){attrX=v/1000;},function(v){return '.'+v;});
+sl('#aY','#aYv',function(v){attrY=v/1000;},function(v){return '.'+v;});
+sl('#stN','#stNv',function(v){stN=v;});
+sl('#stSz','#stSzv',function(v){stSz=v/100;});
+sl('#stY','#stYv',function(v){stY=v/1000;},function(v){return '.'+v;});
+sl('#stG','#stGv',function(v){stG=v/100;});
+sl('#nSz','#nSzv',function(v){});
+sl('#eSz','#eSzv',function(v){});
+sl('#tX','#tXv',function(v){tdx=v;});
+sl('#tY','#tYv',function(v){tdy=v;});
+$('#stLeft').onchange=function(e){stLeft=e.target.checked;render();};
+$('#numLeft').onchange=render;
+$('#winAlpha').onchange=render;
+$('#nOutline').onchange=render;
+['#tName','#tType','#tEff','#tAtk','#tDef','#tNum'].forEach(function(id){
+  $(id).addEventListener('input',render);});
+function fbtn(id,other,val){$(id).onclick=function(){jpFont=val;
+  $(id).classList.add('on');$(other).classList.remove('on');render();};}
+fbtn('#fMincho','#fGothic','mincho');fbtn('#fGothic','#fMincho','gothic');
+$('#cBlack').onclick=function(){tcol='#000';
+  $('#cBlack').classList.add('on');$('#cWhite').classList.remove('on');render();};
+$('#cWhite').onclick=function(){tcol='#fff';
+  $('#cWhite').classList.add('on');$('#cBlack').classList.remove('on');render();};
+$('#fit').onclick=fit;
+
+/* ---------- 書き出し ---------- */
+let outFile=null;
+function d2b(u){const b=atob(u.split(',')[1]),n=b.length,a=new Uint8Array(n);
+  for(let i=0;i<n;i++)a[i]=b.charCodeAt(i);return new Blob([a],{type:'image/png'});}
+$('#save').onclick=function(){
+  if(!W)return;
+  const out=document.createElement('canvas');out.width=W;out.height=H;
+  compose(out.getContext('2d'));
+  const url=out.toDataURL('image/png');
+  $('#outImg').src=url;$('#dlBtn').href=url;
+  try{outFile=new File([d2b(url)],'card.png',{type:'image/png'});}catch(err){outFile=null;}
+  const ok=outFile&&navigator.canShare&&navigator.canShare({files:[outFile]});
+  $('#shareBtn').style.display=ok?'':'none';
+  $('#sheet').classList.add('on');
+};
+$('#shareBtn').onclick=function(){if(outFile)navigator.share({files:[outFile]}).catch(function(){});};
+$('#closeSheet').onclick=function(){$('#sheet').classList.remove('on');};
+$('#sheet').onclick=function(e){if(e.target===$('#sheet'))$('#sheet').classList.remove('on');};
+
+/* ---------- 起動 ---------- */
+(async function(){
+  await openDB();
+  const sets=[['frames',frames,'#sFrame',pickFrame],['attrs',attrs,'#sAttr',pickAttr],
+              ['stars',stars,'#sStar',pickStar]];
+  for(const s of sets){
+    const list=await idbGet(s[0]);
+    if(list&&list.length){
+      for(const u of list){const im=await mkImg(u);if(im)s[1].push(im);}
+      rebuild(s[1],s[2],s[3]);
+    }
+  }
+  if(frames.length)pickFrame(0);
+  if(attrs.length)mark('#sAttr',-1);
+  const gh=await idbGet('gh');
+  if(gh&&gh.repo){
+    $('#ghRepo').value=gh.repo;
+    $('#ghBranch').value=gh.branch||'main';
+    $('#ghPath').value=gh.path||'assets';
+    ghLoadAll(true);
+  }
+  resize();
+})();
+addEventListener('resize',resize);
+resize();
+</script>
+</body>
+</html>
