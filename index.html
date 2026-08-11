@@ -120,10 +120,28 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
       <button class="btn" data-tab="place">配置</button>
       <button class="btn" data-tab="pop">はみ出し</button>
       <button class="btn" data-tab="win">窓</button>
+      <button class="btn" data-tab="msk">マスク</button>
       <button class="btn" data-tab="mat">素材</button>
     </div>
 
     <!-- 素材 -->
+    <div class="panel" id="pMsk">
+      <div class="bar">
+        <label class="chk"><input type="checkbox" id="mkOn">マスクとして表示</label>
+      </div>
+      <div class="lab">黒塗り画像（カラーと同じ位置に貼られます）</div>
+      <div class="bar">
+        <button class="btn sm" id="mkBg">背景のマスク</button>
+        <button class="btn sm" id="mkSubj">人物のマスク</button>
+        <button class="btn ghost sm" id="mkClear">読み込みを取消</button>
+      </div>
+      <div class="bar">
+        <label class="chk"><input type="checkbox" id="mkBox">効果欄を黒くする</label>
+        <label class="chk"><input type="checkbox" id="mkText">文字を黒で描く</label>
+      </div>
+      <div id="hint" style="margin-top:8px">白＝転写する（キラキラ）／黒＝転写しない。カラーで位置を決めてから、ここで黒塗り版に差し替えて書き出してください。</div>
+    </div>
+
     <div class="panel" id="pMat">
       <details id="ghBox">
         
@@ -193,6 +211,15 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
       <div class="bar"><label class="sl">大きさ<input type="range" id="sc" min="5" max="400" value="100"><b id="scv">100%</b></label></div>
       <div class="bar"><label class="sl">回転<input type="range" id="rot" min="-180" max="180" value="0"><b id="rotv">0°</b></label></div>
       <div class="bar"><label class="sl">枠の濃さ<input type="range" id="fo" min="0" max="100" value="100"><b id="fov">100%</b></label></div>
+      <div class="lab">効果</div>
+      <div class="bar">
+        <label class="sl">人物の光<input type="range" id="fxGlow" min="0" max="100" value="0"><b id="fxGlowv">0</b></label>
+        <label class="chk"><input type="checkbox" id="clipBtm" checked>番号欄には出さない</label>
+      </div>
+      <div class="bar">
+        <label class="sl">ホロ<input type="range" id="fxHolo" min="0" max="100" value="0"><b id="fxHolov">0</b></label>
+        <label class="sl">きらめき<input type="range" id="fxSpark" min="0" max="100" value="0"><b id="fxSparkv">0</b></label>
+      </div>
       <div class="lab">イラストの上に重ねるパネル</div>
       <div class="bar">
         <label class="chk"><input type="checkbox" id="pnBox">効果欄</label>
@@ -314,6 +341,7 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
 <input type="file" id="fStar" accept="image/*" multiple>
 <input type="file" id="fProp" accept="image/*" multiple>
 <input type="file" id="fIll" accept="image/*">
+<input type="file" id="fMask2" accept="image/*">
 
 <script>
 const $=s=>document.querySelector(s);
@@ -346,6 +374,8 @@ let frames=[],attrs=[],stars=[],props=[];
 let fi=-1,ai=-1,si=-1,pi=-1;
 let frameImg=null,W=0,H=0;
 let bgImg=null,subjImg=null;
+let bgMask=null,subjMask=null;      // 転写マスク用の黒塗り画像
+let maskMode=false,maskBox=false,maskText=false;
 let bgT={x:0,y:0,s:1,rot:0},subjT={x:0,y:0,s:1,rot:0};
 let layer='bg';                       // いま操作している層
 function curImg(){return layer==='bg'?bgImg:subjImg;}
@@ -360,7 +390,7 @@ let win={x:0,y:0,w:0,h:0};
 let popCv=null,popCtx=null,workCv=null;
 let vs=1,vx=0,vy=0;
 let tab='txt',tool='brush',ink='w',brush=70,frameOp=1;
-let jpFont='mincho',tcol='#fff';
+let jpFont='mincho',tcol='#fff',nameStyle='black';
 let attrSz=1,attrX=R.attr.x,attrY=R.attr.y;
 let stN=0,stSz=1,stY=R.star.y,stG=1,stLeft=false;
 let propSz=1,propX=R.prop.x,propY=R.prop.y;
@@ -370,6 +400,8 @@ let panelBox=false,panelBoxA=0.72,panelPlate=false,panelPlateA=0.72;
 let starsUnder=false;
 const undoS=[];let lasso=[];
 let popUsed=false;
+let glowAmt=0,holoAmt=0,sparkAmt=0,sparkSeed=1;
+let clipBottom=true;   // 効果欄の下端より下（番号欄）には人物を出さない
 
 /* ---------- 保存（IndexedDB） ---------- */
 let db=null;
@@ -409,6 +441,18 @@ function fit(){
   vs=Math.min(r.width/W,r.height/H)*0.94;
   vx=(r.width-W*vs)/2;vy=(r.height-H*vs)/2;render();
 }
+function drawWhiteCard(c){
+  if(!frameImg)return;
+  const wc=workCv.getContext('2d');
+  wc.globalCompositeOperation='source-over';wc.clearRect(0,0,W,H);
+  wc.drawImage(frameImg,0,0,W,H);
+  wc.globalCompositeOperation='destination-over';       // 窓の穴も埋める
+  wc.fillStyle='#000';wc.fillRect(win.x,win.y,win.w,win.h);
+  wc.globalCompositeOperation='source-in';              // 全部を白に
+  wc.fillStyle='#fff';wc.fillRect(0,0,W,H);
+  wc.globalCompositeOperation='source-over';
+  c.drawImage(workCv,0,0);
+}
 function drawLayer(c,img,t){
   if(!img)return;
   c.save();c.translate(t.x,t.y);c.rotate(t.rot*Math.PI/180);c.scale(t.s,t.s);
@@ -439,12 +483,33 @@ function drawText(c){
   if(nm){
     const sz=R.name.size*H*(+$('#nSz').value/100);
     c.font='700 '+sz+'px '+F[jpFont];
-    if($('#nOutline').checked){
-      c.lineJoin='round';c.lineWidth=sz*0.10;
-      c.strokeStyle=(tcol==='#fff')?'rgba(0,0,0,.85)':'rgba(255,255,255,.85)';
-      c.strokeText(nm,R.name.x*W+DX,R.name.base*H+DY);
+    const nx=R.name.x*W+DX, ny=R.name.base*H+DY;
+    const wdt=c.measureText(nm).width;
+    let fill=nameStyle, dark=true;
+    if(nameStyle==='white'){fill='#fff';dark=false;}
+    else if(nameStyle==='black')fill='#111';
+    else if(nameStyle==='red')fill='#B3121B';
+    else if(nameStyle==='blue')fill='#123C8C';
+    else{
+      const g=c.createLinearGradient(nx,ny-sz*0.85,nx+wdt,ny+sz*0.12);
+      if(nameStyle==='gold'){
+        g.addColorStop(0,'#FFF6C9');g.addColorStop(.28,'#E9BE55');
+        g.addColorStop(.5,'#8A5E14');g.addColorStop(.72,'#F0CE6B');g.addColorStop(1,'#FFF9DA');
+      }else if(nameStyle==='silver'){
+        g.addColorStop(0,'#FFFFFF');g.addColorStop(.3,'#C3CBD4');
+        g.addColorStop(.52,'#79838F');g.addColorStop(.75,'#D7DEE5');g.addColorStop(1,'#FFFFFF');
+      }else{
+        for(let i=0;i<=6;i++)g.addColorStop(i/6,'hsl('+(i*58)+',92%,62%)');
+      }
+      fill=g;dark=false;
     }
-    c.fillText(nm,R.name.x*W+DX,R.name.base*H+DY);
+    if($('#nOutline').checked){
+      c.lineJoin='round';c.lineWidth=sz*0.11;
+      c.strokeStyle=dark?'rgba(255,255,255,.9)':'rgba(0,0,0,.88)';
+      c.strokeText(nm,nx,ny);
+    }
+    c.fillStyle=fill;c.fillText(nm,nx,ny);
+    c.fillStyle=tcol;
   }
   const ty=$('#tType').value.trim();
   if(ty){
@@ -531,6 +596,57 @@ function buildHole(){
     holeCv=c;
   }catch(e){holeCv=null;}
 }
+function composeMask(c){
+  drawWhiteCard(c);
+  const bi=bgMask||bgImg, si=subjMask||subjImg;
+  if(bi&&win.w>0){c.save();c.beginPath();c.rect(win.x,win.y,win.w,win.h);c.clip();
+    drawLayer(c,bi,bgT);c.restore();}
+  if(si){
+    if(clipBottom){c.save();c.beginPath();c.rect(0,0,W,R.boxOut[3]*H);c.clip();}
+    if(popUsed&&popCv){
+      const wc=workCv.getContext('2d');
+      wc.globalCompositeOperation='source-over';wc.clearRect(0,0,W,H);
+      drawLayer(wc,si,subjT);
+      wc.globalCompositeOperation='destination-in';wc.drawImage(popCv,0,0);
+      wc.globalCompositeOperation='source-over';
+      c.drawImage(workCv,0,0);
+    }else drawLayer(c,si,subjT);
+    if(clipBottom)c.restore();
+  }
+  if(maskBox){
+    c.fillStyle='#000';
+    c.fillRect(R.boxOut[0]*W,R.boxOut[1]*H,(R.boxOut[2]-R.boxOut[0])*W,(R.boxOut[3]-R.boxOut[1])*H);
+  }
+  if(maskText){const keep=tcol;tcol='#000';drawText(c);tcol=keep;}
+}
+function drawFx(c){
+  if(holoAmt>0){
+    const g=c.createLinearGradient(0,0,W,H*0.7);
+    for(let i=0;i<=8;i++)g.addColorStop(i/8,'hsl('+((i*47)%360)+',95%,60%)');
+    c.save();c.globalCompositeOperation='overlay';c.globalAlpha=holoAmt;
+    c.fillStyle=g;c.fillRect(0,0,W,H);c.restore();
+    const g2=c.createLinearGradient(0,H,W*0.6,0);
+    c.save();c.globalCompositeOperation='screen';c.globalAlpha=holoAmt*0.5;
+    for(let i=0;i<=5;i++)g2.addColorStop(i/5,i%2?'rgba(255,255,255,.85)':'rgba(0,0,0,0)');
+    c.fillStyle=g2;c.fillRect(0,0,W,H);c.restore();
+  }
+  if(sparkAmt>0){
+    let sd=sparkSeed;
+    const rnd=function(){sd=(sd*1103515245+12345)%2147483648;return sd/2147483648;};
+    const n=Math.round(sparkAmt*70);
+    c.save();c.globalCompositeOperation='lighter';
+    for(let i=0;i<n;i++){
+      const x=rnd()*W,y=rnd()*H,r=(0.004+rnd()*0.016)*W,a=0.35+rnd()*0.65;
+      const g=c.createRadialGradient(x,y,0,x,y,r);
+      g.addColorStop(0,'rgba(255,255,255,'+a+')');g.addColorStop(1,'rgba(255,255,255,0)');
+      c.fillStyle=g;c.beginPath();c.arc(x,y,r,0,7);c.fill();
+      c.strokeStyle='rgba(255,255,255,'+(a*0.9)+')';c.lineWidth=Math.max(1,r*0.10);
+      c.beginPath();c.moveTo(x-r*2.1,y);c.lineTo(x+r*2.1,y);
+      c.moveTo(x,y-r*2.1);c.lineTo(x,y+r*2.1);c.stroke();
+    }
+    c.restore();
+  }
+}
 function drawPanel(c,r,alpha,tRatio){
   if(!frameImg)return;
   const fw=frameImg.naturalWidth,fh=frameImg.naturalHeight;
@@ -548,6 +664,7 @@ function drawPanel(c,r,alpha,tRatio){
 }
 function compose(c){
   c.clearRect(0,0,W,H);
+  if(maskMode){composeMask(c);return;}
   if(bgImg&&win.w>0){
     if($('#winAlpha').checked&&holeCv){
       if(!work2){work2=document.createElement('canvas');work2.width=W;work2.height=H;}
@@ -564,6 +681,18 @@ function compose(c){
   if(frameImg){c.globalAlpha=frameOp;c.drawImage(frameImg,0,0,W,H);c.globalAlpha=1;}
   if(starsUnder)drawStars(c);              // イラストの下に星
   // 人物レイヤー（枠の上）。はみ出しマスクを塗っていればそこだけ、無ければ全部出す
+  if(subjImg&&clipBottom){c.save();c.beginPath();c.rect(0,0,W,R.boxOut[3]*H);c.clip();}
+  if(subjImg&&glowAmt>0){
+    const wc=workCv.getContext('2d');
+    wc.globalCompositeOperation='source-over';wc.clearRect(0,0,W,H);
+    drawLayer(wc,subjImg,subjT);
+    if(popUsed&&popCv){wc.globalCompositeOperation='destination-in';wc.drawImage(popCv,0,0);
+      wc.globalCompositeOperation='source-over';}
+    c.save();
+    c.shadowColor='rgba(255,246,214,'+glowAmt+')';
+    for(const b of [W*0.010,W*0.024,W*0.045]){c.shadowBlur=b;c.drawImage(workCv,0,0);}
+    c.restore();
+  }
   if(subjImg){
     if(popUsed&&popCv){
       const wc=workCv.getContext('2d');
@@ -573,7 +702,9 @@ function compose(c){
       wc.globalCompositeOperation='source-over';
       c.drawImage(workCv,0,0);
     }else drawLayer(c,subjImg,subjT);
-  }else if(bgImg&&popUsed&&popCv){
+  }
+  if(subjImg&&clipBottom)c.restore();
+  if(!subjImg&&bgImg&&popUsed&&popCv){
     const wc=workCv.getContext('2d');
     wc.globalCompositeOperation='source-over';wc.clearRect(0,0,W,H);
     drawLayer(wc,bgImg,bgT);
@@ -589,6 +720,7 @@ function compose(c){
     c.lineWidth=Math.max(2,H*0.0021);
     c.beginPath();c.moveTo(R.sep.x0*W,R.sep.y*H);c.lineTo(R.sep.x1*W,R.sep.y*H);c.stroke();
   }
+  drawFx(c);
   drawText(c);
 }
 function render(){
@@ -865,6 +997,22 @@ $('#openIll').onclick=function(){if(W)$('#fIll').click();else alert('先に枠�
 document.querySelectorAll('[data-layer]').forEach(function(b){b.onclick=function(){
   document.querySelectorAll('[data-layer]').forEach(function(o){o.classList.remove('on');});
   b.classList.add('on');layer=b.dataset.layer;syncPlace();render();};});
+$('#mkOn').onchange=function(e){maskMode=e.target.checked;render();};
+$('#mkBox').onchange=function(e){maskBox=e.target.checked;render();};
+$('#mkText').onchange=function(e){maskText=e.target.checked;render();};
+let mkTarget='bg';
+$('#mkBg').onclick=function(){mkTarget='bg';$('#fMask2').click();};
+$('#mkSubj').onclick=function(){mkTarget='subj';$('#fMask2').click();};
+$('#mkClear').onclick=function(){bgMask=null;subjMask=null;render();};
+$('#fMask2').onchange=function(e){
+  const f=e.target.files[0];if(!f)return;
+  const im=new Image();
+  im.onload=function(){
+    if(mkTarget==='bg')bgMask=im; else subjMask=im;
+    maskMode=true;$('#mkOn').checked=true;render();
+  };
+  im.src=URL.createObjectURL(f);e.target.value='';
+};
 $('#clrLayer').onclick=function(){
   if(layer==='bg')bgImg=null; else subjImg=null;
   render();
@@ -985,7 +1133,7 @@ document.querySelectorAll('[data-tab]').forEach(function(b){b.onclick=function()
   footerEl.classList.remove('closed');
   document.querySelectorAll('[data-tab]').forEach(function(o){o.classList.remove('on');});
   b.classList.add('on');tab=b.dataset.tab;lasso=[];dot.style.display='none';
-  const map={mat:'#pMat',place:'#pPlace',win:'#pWin',pop:'#pPop',txt:'#pTxt'};
+  const map={mat:'#pMat',place:'#pPlace',win:'#pWin',pop:'#pPop',txt:'#pTxt',msk:'#pMsk'};
   Object.keys(map).forEach(function(t){$(map[t]).classList.toggle('on',tab===t);});
   if(tab==='pop'&&!popCtx&&W)initPop();
   render();};});
@@ -1022,6 +1170,9 @@ $('#numLeft').onchange=render;
 $('#drawSep').onchange=render;
 $('#pnBox').onchange=function(e){panelBox=e.target.checked;render();};
 $('#pnPlate').onchange=function(e){panelPlate=e.target.checked;render();};
+sl('#fxGlow','#fxGlowv',function(v){glowAmt=v/100;});
+sl('#fxHolo','#fxHolov',function(v){holoAmt=v/100*0.55;});
+sl('#fxSpark','#fxSparkv',function(v){sparkAmt=v/100;});
 sl('#pnBoxA','#pnBoxAv',function(v){panelBoxA=v/100;},function(v){return v+'%';});
 sl('#pnPlateA','#pnPlateAv',function(v){panelPlateA=v/100;},function(v){return v+'%';});
 $('#popAll').onclick=function(){
@@ -1036,6 +1187,10 @@ $('#popNone').onclick=function(){
 };
 $('#winAlpha').onchange=render;
 $('#nOutline').onchange=render;
+$('#clipBtm').onchange=function(e){clipBottom=e.target.checked;render();};
+document.querySelectorAll('[data-nc]').forEach(function(b){b.onclick=function(){
+  document.querySelectorAll('[data-nc]').forEach(function(o){o.classList.remove('on');});
+  b.classList.add('on');nameStyle=b.dataset.nc;render();};});
 ['#tName','#tType','#tEff','#tAtk','#tDef','#tNum'].forEach(function(id){
   $(id).addEventListener('input',render);});
 function fbtn(id,other,val){$(id).onclick=function(){jpFont=val;
