@@ -169,8 +169,8 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
           <label class="chk"><input type="checkbox" id="mkText">効果文を黒</label>
         </div>
         <div class="bar" style="flex-wrap:wrap">
-          <label class="chk"><input type="checkbox" id="mkRing">外周を黒く（位置合わせ）</label>
-          <label class="chk"><input type="checkbox" id="mkPaintW">白も塗る</label>
+          <label class="chk"><input type="checkbox" id="mkEdge" checked>外側の帯を黒く</label>
+          <label class="chk"><input type="checkbox" id="mkRing">縁に基準線</label>
           <label class="chk" hidden><input type="checkbox" id="mkName"></label>
         </div>
       </details>
@@ -425,6 +425,7 @@ const R={   // 素材の枠（1180x1720）と公式カードから実測した�
   prop:{x:0.8604,y:0.1504,r:0.0228},
   stline:{x:0.5613,base:0.1719,size:0.0430},
   sep :{y:0.9091,x0:0.0930,x1:0.9090},
+  card:[0.0339,0.0233,0.9678,0.9767],       // カード本体の外形（実測 x40..1141 / y40..1679）
   boxOut  :[0.0602,0.7413,0.9415,0.9465],   // 効果欄パネルの外形
   plateOut:[0.0330,0.0105,0.9500,0.1210]    // 名前欄パネルの外形
 };
@@ -509,41 +510,27 @@ function fit(){
   vs=Math.min(r.width/W,r.height/H)*0.94;
   vx=(r.width-W*vs)/2;vy=(r.height-H*vs)/2;render();
 }
-/* カードのシルエット（枠のアルファ＋窓の穴）を専用キャンバスに作る */
-let silCv=null,silKey='';
-function cardSilhouette(){
-  if(!frameImg)return null;
-  const key=frameImg.src+'|'+W+'x'+H+'|'+[win.x,win.y,win.w,win.h].join(',');
-  if(silCv&&silKey===key)return silCv;
-  silCv=document.createElement('canvas');silCv.width=W;silCv.height=H;
-  const sc=silCv.getContext('2d');
-  sc.drawImage(frameImg,0,0,W,H);
-  sc.globalCompositeOperation='destination-over';       // 窓の穴も埋める
-  sc.fillStyle='#000';sc.fillRect(win.x,win.y,win.w,win.h);
-  sc.globalCompositeOperation='source-over';
-  silKey=key;return silCv;
+/* カード本体の外形（紺色の外側は含めない） */
+function cardRect(){
+  return [R.card[0]*W, R.card[1]*H,
+          (R.card[2]-R.card[0])*W, (R.card[3]-R.card[1])*H];
 }
 function drawCardBase(c,color){
-  const sil=cardSilhouette();if(!sil)return;
-  const tmp=document.createElement('canvas');tmp.width=W;tmp.height=H;
-  const tc=tmp.getContext('2d');
-  tc.drawImage(sil,0,0);
-  tc.globalCompositeOperation='source-in';
-  tc.fillStyle=color;tc.fillRect(0,0,W,H);
-  c.drawImage(tmp,0,0);
+  if(!W)return;
+  const r=cardRect();
+  c.save();
+  c.fillStyle=maskEdgeBlack?'#000':color;   // 外側の帯
+  c.fillRect(0,0,W,H);
+  c.fillStyle=color;                        // カード本体
+  c.fillRect(r[0],r[1],r[2],r[3]);
+  c.restore();
 }
-/* カードの形に沿った外周のリング（貼るときの位置合わせ用） */
+/* カードの縁だけを描く（貼るときの位置合わせ用） */
 function drawCardRing(c,color){
-  const sil=cardSilhouette();if(!sil)return;
-  const tmp=document.createElement('canvas');tmp.width=W;tmp.height=H;
-  const tc=tmp.getContext('2d');
-  tc.drawImage(sil,0,0);
-  tc.globalCompositeOperation='source-in';
-  tc.fillStyle=color;tc.fillRect(0,0,W,H);
-  const t=RING_T*W;
-  tc.globalCompositeOperation='destination-out';        // 内側を抜いてリングに
-  tc.save();tc.translate(t,t);tc.scale((W-2*t)/W,(H-2*t)/H);tc.drawImage(sil,0,0);tc.restore();
-  c.drawImage(tmp,0,0);
+  if(!W)return;
+  const r=cardRect(), t=Math.max(2,RING_T*W);
+  c.save();c.strokeStyle=color;c.lineWidth=t;
+  c.strokeRect(r[0]+t/2,r[1]+t/2,r[2]-t,r[3]-t);c.restore();
 }
 function drawWhiteCard(c){drawCardBase(c,maskFrameBlack?'#000':'#fff');}
 function drawLayer(c,img,t){
@@ -735,45 +722,46 @@ function buildHole(){
   }catch(e){holeCv=null;}
 }
 function composeMask(c){
-  if(maskNameOnly){                       // 名前だけを箔押しする用
-    drawCardBase(c,'#000');
+  const cr=cardRect();
+  c.save();c.fillStyle='#000';c.fillRect(0,0,W,H);c.restore();   // まず全面を黒に
+  c.save();c.beginPath();c.rect(cr[0],cr[1],cr[2],cr[3]);c.clip();
+  composeMaskInner(c);
+  c.restore();
+}
+function composeMaskInner(c){
+  if(maskNameOnly){                       // 名前だけ黒、カード内は白
+    drawCardBase(c,'#fff');
     const nm=$('#tName').value.trim();
     if(nm){
       const sz=R.name.size*H*(+$('#nSz').value/100);
-      c.save();c.fillStyle='#fff';c.font='700 '+sz+'px '+F[jpFont];
+      c.save();c.fillStyle='#000';c.font='700 '+sz+'px '+F[jpFont];
       c.textBaseline='alphabetic';c.textAlign='left';
       c.fillText(nm,R.name.x*W+tdx/1000*W,R.name.base*H+tdy/1000*H);
       c.restore();
     }
     return;
   }
-  drawWhiteCard(c);
+  // 1) カードの土台
+  drawCardBase(c,maskFrameBlack?'#000':'#fff');
+  // 2) 黒塗りイラスト（白い部分は透明なので土台がそのまま残る）
   const bgSrc=bgMask||bgImg, subjSrc=subjMask||subjImg;
-  if(bgSrc||subjSrc){
-    const mk=document.createElement('canvas');mk.width=W;mk.height=H;
-    const mc=mk.getContext('2d');
-    mc.fillStyle='#fff';mc.fillRect(0,0,W,H);          // 何も無い所は白＝下を残す
-    if(bgSrc&&win.w>0){
-      mc.save();mc.beginPath();mc.rect(win.x,win.y,win.w,win.h);mc.clip();
-      drawLayer(mc,bgSrc,bgT);mc.restore();
-    }
-    if(subjSrc){
-      if(clipBottom){mc.save();mc.beginPath();mc.rect(0,0,W,R.boxOut[3]*H);mc.clip();}
-      if(popUsed&&popCv){
-        const t2=document.createElement('canvas');t2.width=W;t2.height=H;
-        const t2c=t2.getContext('2d');
-        drawLayer(t2c,subjSrc,subjT);
-        t2c.globalCompositeOperation='destination-in';t2c.drawImage(popCv,0,0);
-        mc.drawImage(t2,0,0);
-      }else drawLayer(mc,subjSrc,subjT);
-      if(clipBottom)mc.restore();
-    }
+  if(bgSrc&&win.w>0){
+    c.save();c.beginPath();c.rect(win.x,win.y,win.w,win.h);c.clip();
+    drawLayer(c,bgSrc,bgT);c.restore();
+  }
+  if(subjSrc){
     c.save();
-    // 乗算：白は下を残し、黒だけが乗る（枠の形が消えない）
-    if(!maskPaintWhite)c.globalCompositeOperation='multiply';
-    c.drawImage(mk,0,0);
+    if(clipBottom){c.beginPath();c.rect(0,0,W,R.boxOut[3]*H);c.clip();}
+    if(popUsed&&popCv){
+      const t2=document.createElement('canvas');t2.width=W;t2.height=H;
+      const t2c=t2.getContext('2d');
+      drawLayer(t2c,subjSrc,subjT);
+      t2c.globalCompositeOperation='destination-in';t2c.drawImage(popCv,0,0);
+      c.drawImage(t2,0,0);
+    }else drawLayer(c,subjSrc,subjT);
     c.restore();
   }
+  // 3) 名前欄・効果欄を上から塗りつぶす
   if(maskPlateMode!=='auto'){
     c.fillStyle=(maskPlateMode==='black')?'#000':'#fff';
     c.fillRect(R.plateOut[0]*W,R.plateOut[1]*H,
@@ -783,7 +771,8 @@ function composeMask(c){
     c.fillStyle=(maskBoxMode==='black')?'#000':'#fff';
     c.fillRect(R.boxOut[0]*W,R.boxOut[1]*H,(R.boxOut[2]-R.boxOut[0])*W,(R.boxOut[3]-R.boxOut[1])*H);
   }
-  if(maskRing&&!maskFrameBlack)drawCardRing(c,'#000');
+  // 4) 目印と文字
+  if(maskRing)drawCardRing(c,maskFrameBlack?'#fff':'#000');
   if(maskMarks)drawMaskMarks(c);
   if(maskText){const keep=tcol,ns=nameStyle;tcol='#000';nameStyle='black';
     drawText(c);tcol=keep;nameStyle=ns;}
@@ -1203,7 +1192,6 @@ document.querySelectorAll('[data-mkpl]').forEach(function(b){b.onclick=function(
   document.querySelectorAll('[data-mkpl]').forEach(function(o){o.classList.remove('on');});
   b.classList.add('on');maskPlateMode=b.dataset.mkpl;render();};});
 $('#mkMarks').onchange=function(e){maskMarks=e.target.checked;render();};
-$('#mkPaintW').onchange=function(e){maskPaintWhite=e.target.checked;render();};
 function setBtnGroup(attr,val){
   document.querySelectorAll('['+attr+']').forEach(function(o){
     o.classList.toggle('on',o.dataset[attr.replace('data-','')]===val);});
@@ -1213,8 +1201,17 @@ document.querySelectorAll('[data-preset]').forEach(function(b){b.onclick=functio
   b.classList.add('on');
   const t=b.dataset.preset;
   maskNameOnly=(t==='name');
-  if(t==='gm'){maskFrameBlack=false;maskPlateMode='auto';maskBoxMode='auto';maskRing=true;}
-  if(t==='rare'){maskFrameBlack=true;maskPlateMode='black';maskBoxMode='black';maskRing=false;}
+  if(t==='gm'){   // カード内は全部白、外側の帯だけ黒
+    maskFrameBlack=false;maskPlateMode='white';maskBoxMode='white';
+    maskRing=false;maskMarks=false;maskText=false;maskEdgeBlack=true;
+  }
+  if(t==='rare'){ // 枠と効果欄は黒、名前・属性・星だけ白
+    maskFrameBlack=true;maskPlateMode='black';maskBoxMode='black';
+    maskRing=false;maskMarks=true;maskText=false;maskEdgeBlack=true;
+  }
+  if(t==='name'){maskMarks=false;maskText=false;}
+  $('#mkMarks').checked=maskMarks;$('#mkText').checked=maskText;
+  $('#mkEdge').checked=maskEdgeBlack;
   setBtnGroup('data-mkfr',maskFrameBlack?'black':'white');
   setBtnGroup('data-mkpl',maskPlateMode);
   setBtnGroup('data-mkbox',maskBoxMode);
@@ -1222,23 +1219,41 @@ document.querySelectorAll('[data-preset]').forEach(function(b){b.onclick=functio
   maskMode=true;$('#mkOn').checked=true;
   render();};});
 $('#mkRing').onchange=function(e){maskRing=e.target.checked;render();};
+$('#mkEdge').onchange=function(e){maskEdgeBlack=e.target.checked;render();};
 $('#mkName').onchange=function(e){maskNameOnly=e.target.checked;render();};
 $('#mkText').onchange=function(e){maskText=e.target.checked;render();};
 let mkTarget='bg';
 $('#mkBg').onclick=function(){mkTarget='bg';$('#fMask2').click();};
 $('#mkSubj').onclick=function(){mkTarget='subj';$('#fMask2').click();};
 $('#mkClear').onclick=function(){bgMask=null;subjMask=null;render();};
+function toMaskCanvas(im){
+  const cv=document.createElement('canvas');
+  cv.width=im.naturalWidth;cv.height=im.naturalHeight;
+  const cc=cv.getContext('2d',{willReadFrequently:true});
+  cc.drawImage(im,0,0);
+  const d=cc.getImageData(0,0,cv.width,cv.height),a=d.data;
+  for(let i=0;i<a.length;i+=4){
+    const lum=(a[i]*0.299+a[i+1]*0.587+a[i+2]*0.114);
+    const al=a[i+3]/255;
+    a[i]=a[i+1]=a[i+2]=0;                 // 黒で塗る
+    a[i+3]=Math.round((255-lum)*al);      // 暗いほど濃く、白は透明
+  }
+  cc.putImageData(d,0,0);
+  cv.naturalWidth=cv.width;cv.naturalHeight=cv.height;
+  return cv;
+}
 $('#fMask2').onchange=function(e){
   const f=e.target.files[0];if(!f)return;
   const im=new Image();
   im.onload=function(){
+    const mk=toMaskCanvas(im);
     if(mkTarget==='bg'){
-      bgMask=im;
-      if(!bgImg){const k=Math.max(win.w/im.naturalWidth,win.h/im.naturalHeight);
+      bgMask=mk;
+      if(!bgImg){const k=Math.max(win.w/mk.width,win.h/mk.height);
         bgT={x:win.x+win.w/2,y:win.y+win.h/2,s:k,rot:0};}
     }else{
-      subjMask=im;
-      if(!subjImg){const k=Math.min(W*0.8/im.naturalWidth,H*0.7/im.naturalHeight);
+      subjMask=mk;
+      if(!subjImg){const k=Math.min(W*0.8/mk.width,H*0.7/mk.height);
         subjT={x:win.x+win.w/2,y:win.y+win.h/2,s:k,rot:0};}
     }
     maskMode=true;$('#mkOn').checked=true;syncPlace();render();
