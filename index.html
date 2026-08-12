@@ -1601,8 +1601,18 @@ addEventListener('resize',resize);
 addEventListener('orientationchange',function(){setTimeout(fitResize,120);});
 function fitResize(){resize();fit();}
 if(window.ResizeObserver){
-  let t=null;
-  new ResizeObserver(function(){clearTimeout(t);t=setTimeout(fitResize,60);}).observe(stage);
+  let t=null,lastW=0,lastH=0;
+  new ResizeObserver(function(){
+    clearTimeout(t);
+    t=setTimeout(function(){
+      const r=stage.getBoundingClientRect();
+      if(Math.abs(r.width-lastW)<1&&Math.abs(r.height-lastH)<1)return;
+      const first=(lastW===0);
+      lastW=r.width;lastH=r.height;
+      resize();
+      if(first)fit();
+    },60);
+  }).observe(stage);
 }
 resize();
 </script>
