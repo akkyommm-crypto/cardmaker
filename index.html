@@ -138,10 +138,6 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
         <button class="btn sm" id="mkSubj">人物の黒塗り</button>
         <button class="btn ghost sm" id="mkClear">取消</button>
       </div>
-      <div class="bar">
-        <button class="btn sm" id="aiMask">AIでマスクを作る</button>
-        <span class="chk">配置タブで選んでいる層に作ります</span>
-      </div>
 
       <div class="lab">仕上がりを選ぶ</div>
       <div class="bar">
@@ -178,7 +174,7 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
           <label class="chk" hidden><input type="checkbox" id="mkName"></label>
         </div>
       </details>
-      <div class="hint" style="margin-top:6px">白＝転写する／黒＝転写しない。カラーで位置を決めてから黒塗り版に差し替えます。</div>
+      <div class="hint" style="margin-top:6px">白＝転写する／黒＝転写しない。黒塗り画像はマスクエディタで作れます。カラーで位置を決めてから差し替えてください。</div>
     </div>
 
     <div class="panel" id="pMat">
@@ -246,14 +242,6 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
         <button class="btn sm" data-layer="subj">人物</button>
         <div class="spacer"></div>
         <button class="btn ghost sm" id="clrLayer">この絵を消す</button>
-      </div>
-      <div class="bar">
-        <button class="btn sm" id="aiCut">AIで背景を消す</button>
-        <select id="aiModel" class="btn sm" style="padding:8px">
-          <option value="rmbg">高精度</option>
-          <option value="modnet">人物特化</option>
-        </select>
-        <span id="aiMsg" style="font-size:11px;color:var(--amber)"></span>
       </div>
       <div class="bar"><label class="sl">大きさ<input type="range" id="sc" min="5" max="400" value="100"><b id="scv">100%</b></label></div>
       <div class="bar"><label class="sl">回転<input type="range" id="rot" min="-180" max="180" value="0"><b id="rotv">0°</b></label></div>
@@ -758,7 +746,7 @@ function composeMaskInner(c){
   drawCardBase(c,maskFrameBlack?'#000':'#fff');
   // 2) 黒塗りイラスト（白い部分は透明なので土台がそのまま残る）
   const bgSrc=bgMask, subjSrc=subjMask;   // カラーは使わない
-  if(bgSrc&&win.w>0){
+  if(bgSrc&&win.w>0){                      // 背景は必ずイラスト窓の中だけ
     c.save();c.beginPath();c.rect(win.x,win.y,win.w,win.h);c.clip();
     drawLayer(c,bgSrc,bgT);c.restore();
   }
@@ -907,14 +895,6 @@ function compose(c){
     }else drawLayer(c,subjImg,subjT);
   }
   if(subjImg&&clipBottom)c.restore();
-  if(!subjImg&&bgImg&&popUsed&&popCv){
-    const wc=workCv.getContext('2d');
-    wc.globalCompositeOperation='source-over';wc.clearRect(0,0,W,H);
-    drawLayer(wc,bgImg,bgT);
-    wc.globalCompositeOperation='destination-in';wc.drawImage(popCv,0,0);
-    wc.globalCompositeOperation='source-over';
-    c.drawImage(workCv,0,0);
-  }
   if(panelBox)  drawPanel(c,R.boxOut,  panelBoxA,  0.013);
   if(panelPlate)drawPanel(c,R.plateOut,panelPlateA,0.011);
   drawAttr(c);if(!starsUnder)drawStars(c);drawProp(c);
@@ -1036,84 +1016,6 @@ function mkImg(src,remote,name){return new Promise(function(res){
   if(remote&&/^https?:/i.test(src))im.crossOrigin='anonymous';
   im.onload=function(){im._remote=!!remote;im._name=name||'';res(im);};
   im.onerror=function(){res(null);};im.src=src;});}
-
-/* ===== AIで背景を切り抜く（端末内で処理・無料） ===== */
-let aiLib=null,aiModel=null,aiProc=null,aiName='';
-const AI_MODELS={
-  rmbg:{id:'briaai/RMBG-1.4', label:'高精度（RMBG）'},
-  modnet:{id:'Xenova/modnet', label:'人物特化（MODNet）'}
-};
-function aiStatus(t){const e=$('#aiMsg');if(e)e.textContent=t||'';}
-async function aiLoad(key){
-  const m=AI_MODELS[key];
-  if(!aiLib){
-    aiStatus('ライブラリ取得中…');
-    aiLib=await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.3.3');
-    aiLib.env.allowLocalModels=false;
-  }
-  if(aiModel&&aiName===key)return;
-  aiStatus('モデル取得中…（初回のみ時間がかかります）');
-  aiModel=await aiLib.AutoModel.from_pretrained(m.id,{config:{model_type:'custom'},device:'webgpu',dtype:'fp32'})
-    .catch(function(){return aiLib.AutoModel.from_pretrained(m.id,{config:{model_type:'custom'}});});
-  aiProc=await aiLib.AutoProcessor.from_pretrained(m.id,{config:{
-    do_normalize:true,do_pad:false,do_rescale:true,do_resize:true,
-    image_mean:[0.5,0.5,0.5],image_std:[1,1,1],
-    feature_extractor_type:'ImageFeatureExtractor',resample:2,
-    rescale_factor:0.00392156862745098,size:{width:1024,height:1024}}});
-  aiName=key;
-}
-/* 画像 → 背景を透明にしたキャンバス */
-async function aiCutout(img){
-  const key=$('#aiModel')?$('#aiModel').value:'rmbg';
-  await aiLoad(key);
-  aiStatus('切り抜き中…');
-  const w=img.naturalWidth||img.width, h=img.naturalHeight||img.height;
-  const src=document.createElement('canvas');src.width=w;src.height=h;
-  src.getContext('2d').drawImage(img,0,0,w,h);
-  const raw=await aiLib.RawImage.fromURL(src.toDataURL('image/png'));
-  const {pixel_values}=await aiProc(raw);
-  const out=await aiModel({input:pixel_values});
-  const t=out.output||out.alphas||Object.values(out)[0];
-  const mimg=await aiLib.RawImage.fromTensor(t[0].mul(255).to('uint8')).resize(w,h);
-
-  const cv=document.createElement('canvas');cv.width=w;cv.height=h;
-  const cc=cv.getContext('2d',{willReadFrequently:true});
-  cc.drawImage(src,0,0);
-  const d=cc.getImageData(0,0,w,h),a=d.data;
-  for(let i=0;i<a.length/4;i++)a[i*4+3]=mimg.data[i];
-  cc.putImageData(d,0,0);
-  cv.naturalWidth=w;cv.naturalHeight=h;
-  aiStatus('');
-  return cv;
-}
-/* 透過キャンバス → 黒いシルエット（マスク用） */
-function silhouette(cut){
-  const w=cut.width,h=cut.height;
-  const cv=document.createElement('canvas');cv.width=w;cv.height=h;
-  const cc=cv.getContext('2d',{willReadFrequently:true});
-  cc.drawImage(cut,0,0);
-  const d=cc.getImageData(0,0,w,h),a=d.data;
-  for(let i=0;i<a.length;i+=4){a[i]=a[i+1]=a[i+2]=0;}
-  cc.putImageData(d,0,0);
-  cv.naturalWidth=w;cv.naturalHeight=h;
-  return cv;
-}
-async function aiRun(mode){
-  const img=(layer==='bg')?bgImg:subjImg;
-  if(!img){alert('先にカラー画像を読み込んでください');return;}
-  try{
-    const cut=await aiCutout(img);
-    if(mode==='cut'){                       // 背景を消す
-      if(layer==='bg')bgImg=cut; else subjImg=cut;
-    }else{                                  // マスクを作る
-      const sil=silhouette(cut);
-      if(layer==='bg')bgMask=sil; else subjMask=sil;
-      maskMode=true;$('#mkOn').checked=true;
-    }
-    render();
-  }catch(err){aiStatus('失敗しました');console.error(err);
-    alert('切り抜きに失敗しました。通信環境を確認してもう一度お試しください。');}
-}
 
 /* 同じ場所に置いてある素材を起動時に読む（設定不要） */
 const BUILTIN={
@@ -1357,8 +1259,6 @@ $('#fMask2').onchange=function(e){
   };
   im.src=URL.createObjectURL(f);e.target.value='';
 };
-$('#aiCut').onclick=function(){aiRun('cut');};
-$('#aiMask').onclick=function(){aiRun('mask');};
 $('#clrLayer').onclick=function(){
   if(layer==='bg')bgImg=null; else subjImg=null;
   render();
@@ -1524,7 +1424,9 @@ sl('#fxSpark','#fxSparkv',function(v){sparkAmt=v/100;});
 sl('#pnBoxA','#pnBoxAv',function(v){panelBoxA=v/100;},function(v){return v+'%';});
 sl('#pnPlateA','#pnPlateAv',function(v){panelPlateA=v/100;},function(v){return v+'%';});
 $('#popAll').onclick=function(){
-  if(!W)return; if(!popCtx)initPop();
+  if(!W)return;
+  if(!subjImg){alert('「全面に出す」は人物レイヤー用です。配置タブで人物の絵を読み込んでください。\n背景はイラスト窓の中にだけ表示されます。');return;}
+  if(!popCtx)initPop();
   snap();popCtx.globalCompositeOperation='source-over';
   popCtx.fillStyle='#fff';popCtx.fillRect(0,0,W,H);popUsed=true;
   panelBox=true;$('#pnBox').checked=true;
