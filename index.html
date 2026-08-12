@@ -139,13 +139,24 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
         <button class="btn ghost sm" id="mkClear">読み込みを取消</button>
       </div>
       <div class="bar">
-        <label class="chk"><input type="checkbox" id="mkFrame">枠を黒くする</label>
+        <span class="chk" style="width:52px">枠</span>
+        <button class="btn sm on" data-mkfr="white">白</button>
+        <button class="btn sm" data-mkfr="black">黒</button>
+        <div class="spacer"></div>
         <label class="chk"><input type="checkbox" id="mkMarks" checked>名前・属性・星を白で出す</label>
-        <label class="chk">効果欄</label>
+      </div>
+      <div class="bar">
+        <span class="chk" style="width:52px">名前欄</span>
+        <button class="btn sm on" data-mkpl="auto">枠と同じ</button>
+        <button class="btn sm" data-mkpl="white">白</button>
+        <button class="btn sm" data-mkpl="black">黒</button>
+      </div>
+      <div class="bar">
+        <span class="chk" style="width:52px">効果欄</span>
         <button class="btn sm on" data-mkbox="auto">枠と同じ</button>
         <button class="btn sm" data-mkbox="white">白</button>
         <button class="btn sm" data-mkbox="black">黒</button>
-        <label class="chk"><input type="checkbox" id="mkText">文字を黒で描く</label>
+        <label class="chk"><input type="checkbox" id="mkText">文字を黒で</label>
       </div>
       <div class="bar">
         <label class="chk"><input type="checkbox" id="mkRing">外周だけ黒く残す（位置合わせ用）</label>
@@ -720,6 +731,11 @@ function composeMask(c){
     }else drawLayer(c,subjSrc,subjT);
     if(clipBottom)c.restore();
   }
+  if(maskPlateMode!=='auto'){
+    c.fillStyle=(maskPlateMode==='black')?'#000':'#fff';
+    c.fillRect(R.plateOut[0]*W,R.plateOut[1]*H,
+               (R.plateOut[2]-R.plateOut[0])*W,(R.plateOut[3]-R.plateOut[1])*H);
+  }
   if(maskBoxMode!=='auto'){
     c.fillStyle=(maskBoxMode==='black')?'#000':'#fff';
     c.fillRect(R.boxOut[0]*W,R.boxOut[1]*H,(R.boxOut[2]-R.boxOut[0])*W,(R.boxOut[3]-R.boxOut[1])*H);
@@ -1137,7 +1153,12 @@ $('#mkOn').onchange=function(e){maskMode=e.target.checked;render();};
 document.querySelectorAll('[data-mkbox]').forEach(function(b){b.onclick=function(){
   document.querySelectorAll('[data-mkbox]').forEach(function(o){o.classList.remove('on');});
   b.classList.add('on');maskBoxMode=b.dataset.mkbox;render();};});
-$('#mkFrame').onchange=function(e){maskFrameBlack=e.target.checked;render();};
+document.querySelectorAll('[data-mkfr]').forEach(function(b){b.onclick=function(){
+  document.querySelectorAll('[data-mkfr]').forEach(function(o){o.classList.remove('on');});
+  b.classList.add('on');maskFrameBlack=(b.dataset.mkfr==='black');render();};});
+document.querySelectorAll('[data-mkpl]').forEach(function(b){b.onclick=function(){
+  document.querySelectorAll('[data-mkpl]').forEach(function(o){o.classList.remove('on');});
+  b.classList.add('on');maskPlateMode=b.dataset.mkpl;render();};});
 $('#mkMarks').onchange=function(e){maskMarks=e.target.checked;render();};
 $('#mkRing').onchange=function(e){maskRing=e.target.checked;render();};
 $('#mkName').onchange=function(e){maskNameOnly=e.target.checked;render();};
