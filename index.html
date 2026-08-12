@@ -59,7 +59,7 @@ footer.closed .tabs .btn.on::after{content:' ▴'}
 label.sl{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--dim);flex:1;min-width:0}
 input[type=range]{flex:1;accent-color:var(--amber);min-width:40px}
 label.sl b{color:var(--text);font-variant-numeric:tabular-nums;width:40px;text-align:right;font-size:11px}
-#hint{font-size:11px;color:var(--dim);margin-top:7px;line-height:1.5}
+#hint,.hint{font-size:11px;color:var(--dim);margin-top:7px;line-height:1.5}
 input[type=file]{display:none}
 details{border:1px solid var(--line);border-radius:8px;padding:7px 9px;margin:6px 0;background:var(--panel2)}
 summary{font-size:12px;color:var(--dim);cursor:pointer;list-style:none}
@@ -86,7 +86,9 @@ input[type=text],textarea{flex:1;min-width:0;background:var(--panel2);color:var(
   border:1px solid var(--line);border-radius:6px;padding:8px;font-family:inherit;font-size:13px;
   -webkit-user-select:auto;user-select:auto}
 textarea{resize:vertical;min-height:80px;line-height:1.5}
-.chk{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--dim)}
+.chk{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--dim);white-space:nowrap}
+.chk.big{font-size:13px;color:var(--text)}
+.spacer{flex:1}
 
 #sheet{position:fixed;inset:0;background:rgba(10,8,6,.88);display:none;
   align-items:center;justify-content:center;padding:18px;z-index:20}
@@ -130,39 +132,49 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
     <!-- 素材 -->
     <div class="panel" id="pMsk">
       <div class="bar">
-        <label class="chk"><input type="checkbox" id="mkOn">マスクとして表示</label>
-      </div>
-      <div class="lab">黒塗り画像（カラーと同じ位置に貼られます）</div>
-      <div class="bar">
-        <button class="btn sm" id="mkBg">背景のマスク</button>
-        <button class="btn sm" id="mkSubj">人物のマスク</button>
-        <button class="btn ghost sm" id="mkClear">読み込みを取消</button>
-      </div>
-      <div class="bar">
-        <span class="chk" style="width:52px">枠</span>
-        <button class="btn sm on" data-mkfr="white">白</button>
-        <button class="btn sm" data-mkfr="black">黒</button>
+        <label class="chk big"><input type="checkbox" id="mkOn">マスク表示</label>
         <div class="spacer"></div>
-        <label class="chk"><input type="checkbox" id="mkMarks" checked>名前・属性・星を白で出す</label>
+        <button class="btn sm" id="mkBg">背景の黒塗り</button>
+        <button class="btn sm" id="mkSubj">人物の黒塗り</button>
+        <button class="btn ghost sm" id="mkClear">取消</button>
       </div>
+
+      <div class="lab">仕上がりを選ぶ</div>
       <div class="bar">
-        <span class="chk" style="width:52px">名前欄</span>
-        <button class="btn sm on" data-mkpl="auto">枠と同じ</button>
-        <button class="btn sm" data-mkpl="white">白</button>
-        <button class="btn sm" data-mkpl="black">黒</button>
+        <button class="btn sm on" data-preset="gm">グラマス</button>
+        <button class="btn sm" data-preset="rare">通常レア</button>
+        <button class="btn sm" data-preset="name">名前だけ</button>
       </div>
-      <div class="bar">
-        <span class="chk" style="width:52px">効果欄</span>
-        <button class="btn sm on" data-mkbox="auto">枠と同じ</button>
-        <button class="btn sm" data-mkbox="white">白</button>
-        <button class="btn sm" data-mkbox="black">黒</button>
-        <label class="chk"><input type="checkbox" id="mkText">文字を黒で</label>
-      </div>
-      <div class="bar">
-        <label class="chk"><input type="checkbox" id="mkRing">外周だけ黒く残す（位置合わせ用）</label>
-        <label class="chk"><input type="checkbox" id="mkName">名前だけ出力</label>
-      </div>
-      <div id="hint" style="margin-top:8px">白＝転写する（キラキラ）／黒＝転写しない。カラーで位置を決めてから、ここで黒塗り版に差し替えて書き出してください。</div>
+
+      <details id="mkAdv"><summary>細かく指定する</summary>
+        <div class="bar">
+          <span class="chk" style="width:52px">枠</span>
+          <button class="btn sm on" data-mkfr="white">白</button>
+          <button class="btn sm" data-mkfr="black">黒</button>
+        </div>
+        <div class="bar">
+          <span class="chk" style="width:52px">名前欄</span>
+          <button class="btn sm on" data-mkpl="auto">枠と同じ</button>
+          <button class="btn sm" data-mkpl="white">白</button>
+          <button class="btn sm" data-mkpl="black">黒</button>
+        </div>
+        <div class="bar">
+          <span class="chk" style="width:52px">効果欄</span>
+          <button class="btn sm on" data-mkbox="auto">枠と同じ</button>
+          <button class="btn sm" data-mkbox="white">白</button>
+          <button class="btn sm" data-mkbox="black">黒</button>
+        </div>
+        <div class="bar" style="flex-wrap:wrap">
+          <label class="chk"><input type="checkbox" id="mkMarks" checked>名前・属性・星を白</label>
+          <label class="chk"><input type="checkbox" id="mkText">効果文を黒</label>
+        </div>
+        <div class="bar" style="flex-wrap:wrap">
+          <label class="chk"><input type="checkbox" id="mkRing">外周を黒く（位置合わせ）</label>
+          <label class="chk"><input type="checkbox" id="mkPaintW">白も塗る</label>
+          <label class="chk" hidden><input type="checkbox" id="mkName"></label>
+        </div>
+      </details>
+      <div class="hint" style="margin-top:6px">白＝転写する／黒＝転写しない。カラーで位置を決めてから黒塗り版に差し替えます。</div>
     </div>
 
     <div class="panel" id="pMat">
@@ -225,36 +237,37 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
 
     <!-- 配置 -->
     <div class="panel" id="pPlace">
-      <div class="lab">動かす絵</div>
       <div class="bar">
-        <button class="btn sm on" data-layer="bg">背景（窓の中）</button>
-        <button class="btn sm" data-layer="subj">人物（枠の外へ）</button>
+        <button class="btn sm on" data-layer="bg">背景</button>
+        <button class="btn sm" data-layer="subj">人物</button>
+        <div class="spacer"></div>
         <button class="btn ghost sm" id="clrLayer">この絵を消す</button>
       </div>
       <div class="bar"><label class="sl">大きさ<input type="range" id="sc" min="5" max="400" value="100"><b id="scv">100%</b></label></div>
       <div class="bar"><label class="sl">回転<input type="range" id="rot" min="-180" max="180" value="0"><b id="rotv">0°</b></label></div>
-      <div class="bar"><label class="sl">枠の濃さ<input type="range" id="fo" min="0" max="100" value="100"><b id="fov">100%</b></label></div>
-      <div class="lab">効果</div>
-      <div class="bar">
-        <label class="sl">人物の光<input type="range" id="fxGlow" min="0" max="100" value="0"><b id="fxGlowv">0</b></label>
-        <label class="chk"><input type="checkbox" id="clipBtm" checked>番号欄には出さない</label>
-      </div>
-      <div class="bar">
-        <label class="sl">ホロ<input type="range" id="fxHolo" min="0" max="100" value="0"><b id="fxHolov">0</b></label>
-        <label class="sl">きらめき<input type="range" id="fxSpark" min="0" max="100" value="0"><b id="fxSparkv">0</b></label>
-      </div>
-      <div class="lab">イラストの上に重ねるパネル</div>
-      <div class="bar">
-        <label class="chk"><input type="checkbox" id="pnBox">効果欄</label>
-        <label class="sl"><input type="range" id="pnBoxA" min="0" max="100" value="72"><b id="pnBoxAv">72%</b></label>
-      </div>
-      <div class="bar">
-        <label class="chk"><input type="checkbox" id="pnPlate">名前欄（板も出す）</label>
-        <label class="sl"><input type="range" id="pnPlateA" min="0" max="100" value="72"><b id="pnPlateAv">72%</b></label>
-      </div>
+
+      <details><summary>光らせる・透かす</summary>
+        <div class="bar">
+          <label class="sl">人物の光<input type="range" id="fxGlow" min="0" max="100" value="0"><b id="fxGlowv">0</b></label>
+        </div>
+        <div class="bar">
+          <label class="sl">ホロ<input type="range" id="fxHolo" min="0" max="100" value="0"><b id="fxHolov">0</b></label>
+          <label class="sl">きらめき<input type="range" id="fxSpark" min="0" max="100" value="0"><b id="fxSparkv">0</b></label>
+        </div>
+        <div class="bar">
+          <label class="chk"><input type="checkbox" id="pnBox">効果欄を透かす</label>
+          <label class="sl"><input type="range" id="pnBoxA" min="0" max="100" value="72"><b id="pnBoxAv">72%</b></label>
+        </div>
+        <div class="bar">
+          <label class="chk"><input type="checkbox" id="pnPlate">名前欄も透かす</label>
+          <label class="sl"><input type="range" id="pnPlateA" min="0" max="100" value="72"><b id="pnPlateAv">72%</b></label>
+        </div>
+        <div class="bar">
+          <label class="sl">枠の濃さ<input type="range" id="fo" min="0" max="100" value="100"><b id="fov">100%</b></label>
+        </div>
+      </details>
     </div>
 
-    <!-- 窓 -->
     <div class="panel" id="pWin">
       <div class="bar" style="font-size:12px;color:var(--dim)">画面をドラッグして窓を決める
         <div class="spacer"></div>
@@ -268,25 +281,27 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
     <!-- はみ出し -->
     <div class="panel" id="pPop">
       <div class="bar">
+        <button class="btn sm" id="popAll">全面に出す</button>
+        <button class="btn ghost sm" id="popNone">全部消す</button>
+        <div class="spacer"></div>
+        <label class="chk"><input type="checkbox" id="clipBtm" checked>番号欄は避ける</label>
+      </div>
+      <div class="bar">
         <div id="ink"><button data-ink="w" class="on">出す</button><button data-ink="b">消す</button></div>
         <div class="tools">
           <button class="btn on" data-tool="brush">筆</button>
           <button class="btn" data-tool="lasso">囲む</button>
         </div>
-      </div>
-      <div class="bar">
-        <label class="sl">太さ<input type="range" id="size" min="6" max="260" value="70"><b id="szv">70</b></label>
         <button class="btn ghost sm" id="undo" disabled>戻す</button>
       </div>
       <div class="bar">
-        <button class="btn sm" id="popAll">全面に出す</button>
-        <button class="btn ghost sm" id="popNone">全部消す</button>
+        <label class="sl">太さ<input type="range" id="size" min="6" max="260" value="70"><b id="szv">70</b></label>
       </div>
+      <div class="hint" style="margin-top:6px">人物が透過PNGなら何も塗らなくてOK。塗った所だけ出したいときは筆や囲むを使います。</div>
     </div>
 
-    <!-- 文字 -->
     <div class="panel on" id="pTxt">
-      <div class="lab">カードの種類（枠も自動で切り替わります）</div>
+      <div class="lab">種類</div>
       <div class="bar" style="overflow-x:auto">
         <button class="btn sm" data-kind="normal">通常</button>
         <button class="btn sm on" data-kind="effect">効果</button>
@@ -316,40 +331,57 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
       <div id="lvWrap" class="bar">
         <label class="sl">レベル<input type="range" id="lvN" min="0" max="13" value="4"><b id="lvNv">4</b></label>
       </div>
-      <div class="fld"><span>カード名</span><input type="text" id="tName" placeholder="氷結界の龍 エクハジャール"></div>
-      <div class="fld"><span>種族欄</span><input type="text" id="tType" placeholder="【ドラゴン族／シンクロ／効果】 / 【魔法カード】"></div>
-      <div class="fld" style="align-items:flex-start"><span>効果</span><textarea id="tEff" placeholder="チューナー＋チューナー以外のモンスター1体以上&#10;このカード名の①…"></textarea></div>
+
+      <div class="lab">文字</div>
+      <div class="fld"><span>カード名</span><input type="text" id="tName" placeholder="黒魔導(くろまどう)のカーテン"></div>
+      <div class="fld"><span>種族欄</span><input type="text" id="tType" placeholder="【ドラゴン族／シンクロ／効果】"></div>
+      <div class="fld" style="align-items:flex-start"><span>効果</span><textarea id="tEff" placeholder="このカード名の①の効果は…"></textarea></div>
       <div class="fld" id="fldAtk"><span>ATK / DEF</span>
         <input type="text" id="tAtk" placeholder="3000"><input type="text" id="tDef" placeholder="1000"></div>
-      <div class="fld"><span>番号</span><input type="text" id="tNum" placeholder="UT01-JP005">
-        <label class="chk"><input type="checkbox" id="numLeft">左下</label>
-        <label class="chk"><input type="checkbox" id="drawSep" checked>区切り線</label></div>
+      <div class="fld"><span>番号</span><input type="text" id="tNum" placeholder="UT01-JP005"></div>
 
-      <div class="lab">書体</div>
-      <div class="bar">
-        <button class="btn sm on" data-font="shippori">しっぽり明朝</button>
-        <button class="btn sm" data-font="noto">Noto明朝</button>
-        <button class="btn sm" data-font="mincho">端末の明朝</button>
-        <button class="btn sm" data-font="gothic">ゴシック</button>
-        <button class="btn sm" id="loadFont">自前</button>
-        <div class="spacer"></div>
-        <button class="btn sm" id="cBlack">黒字</button>
-        <button class="btn sm on" id="cWhite">白字</button>
-        <label class="chk"><input type="checkbox" id="nOutline" checked>名前に縁</label>
+      <div class="lab">カード名の色</div>
+      <div class="bar" style="overflow-x:auto">
+        <button class="btn sm on" data-nc="black">黒</button>
+        <button class="btn sm" data-nc="white">白</button>
+        <button class="btn sm" data-nc="gold">金</button>
+        <button class="btn sm" data-nc="silver">銀</button>
+        <button class="btn sm" data-nc="rainbow">虹</button>
+        <button class="btn sm" data-nc="red">赤</button>
+        <button class="btn sm" data-nc="blue">青</button>
+        <label class="chk"><input type="checkbox" id="nOutline" checked>縁</label>
       </div>
-      <div class="bar">
-        <label class="sl">名前<input type="range" id="nSz" min="40" max="180" value="100"><b id="nSzv">100</b></label>
-        <label class="sl">効果<input type="range" id="eSz" min="50" max="170" value="100"><b id="eSzv">100</b></label>
-      </div>
-      <div class="bar">
-        <label class="sl">名前の字間<input type="range" id="nTr" min="-4" max="20" value="2"><b id="nTrv">2</b></label>
-        <label class="sl">効果の横幅<input type="range" id="eCd" min="80" max="100" value="96"><b id="eCdv">96</b></label>
-      </div>
-      <div id="hint" style="margin-top:4px">カード名に「黒魔導(くろまどう)のカーテン」と書くとルビが付きます。長い名前は自動で横に潰れて枠に収まります。</div>
-      <div class="bar">
-        <label class="sl">全体↔<input type="range" id="tX" min="-60" max="60" value="0"><b id="tXv">0</b></label>
-        <label class="sl">全体↕<input type="range" id="tY" min="-60" max="60" value="0"><b id="tYv">0</b></label>
-      </div>
+
+      <details><summary>書体・サイズ・細かい調整</summary>
+        <div class="bar" style="overflow-x:auto">
+          <button class="btn sm on" data-font="shippori">しっぽり明朝</button>
+          <button class="btn sm" data-font="noto">Noto明朝</button>
+          <button class="btn sm" data-font="mincho">端末の明朝</button>
+          <button class="btn sm" data-font="gothic">ゴシック</button>
+          <button class="btn sm" id="loadFont">自前</button>
+        </div>
+        <div class="bar">
+          <span class="chk" style="width:52px">本文の色</span>
+          <button class="btn sm" id="cBlack">黒</button>
+          <button class="btn sm on" id="cWhite">白</button>
+          <div class="spacer"></div>
+          <label class="chk"><input type="checkbox" id="numLeft">番号を左下</label>
+          <label class="chk"><input type="checkbox" id="drawSep" checked>区切り線</label>
+        </div>
+        <div class="bar">
+          <label class="sl">名前<input type="range" id="nSz" min="40" max="180" value="100"><b id="nSzv">100</b></label>
+          <label class="sl">効果<input type="range" id="eSz" min="50" max="170" value="100"><b id="eSzv">100</b></label>
+        </div>
+        <div class="bar">
+          <label class="sl">名前の字間<input type="range" id="nTr" min="-4" max="20" value="2"><b id="nTrv">2</b></label>
+          <label class="sl">効果の横幅<input type="range" id="eCd" min="80" max="100" value="96"><b id="eCdv">96</b></label>
+        </div>
+        <div class="bar">
+          <label class="sl">全体↔<input type="range" id="tX" min="-60" max="60" value="0"><b id="tXv">0</b></label>
+          <label class="sl">全体↕<input type="range" id="tY" min="-60" max="60" value="0"><b id="tYv">0</b></label>
+        </div>
+        <div class="hint" style="margin-top:4px">カード名に「黒魔導(くろまどう)のカーテン」と書くとルビが付きます。</div>
+      </details>
     </div>
 
     <div id="hint">カード＝種類や文字／配置＝1本指で移動・2本指で拡大回転／はみ出し＝「全面に出す」でイラストがカード一面に。</div>
@@ -717,19 +749,30 @@ function composeMask(c){
   }
   drawWhiteCard(c);
   const bgSrc=bgMask||bgImg, subjSrc=subjMask||subjImg;
-  if(bgSrc&&win.w>0){c.save();c.beginPath();c.rect(win.x,win.y,win.w,win.h);c.clip();
-    drawLayer(c,bgSrc,bgT);c.restore();}
-  if(subjSrc){
-    if(clipBottom){c.save();c.beginPath();c.rect(0,0,W,R.boxOut[3]*H);c.clip();}
-    if(popUsed&&popCv&&workCv){
-      const wc=workCv.getContext('2d');
-      wc.globalCompositeOperation='source-over';wc.clearRect(0,0,W,H);
-      drawLayer(wc,subjSrc,subjT);
-      wc.globalCompositeOperation='destination-in';wc.drawImage(popCv,0,0);
-      wc.globalCompositeOperation='source-over';
-      c.drawImage(workCv,0,0);
-    }else drawLayer(c,subjSrc,subjT);
-    if(clipBottom)c.restore();
+  if(bgSrc||subjSrc){
+    const mk=document.createElement('canvas');mk.width=W;mk.height=H;
+    const mc=mk.getContext('2d');
+    mc.fillStyle='#fff';mc.fillRect(0,0,W,H);          // 何も無い所は白＝下を残す
+    if(bgSrc&&win.w>0){
+      mc.save();mc.beginPath();mc.rect(win.x,win.y,win.w,win.h);mc.clip();
+      drawLayer(mc,bgSrc,bgT);mc.restore();
+    }
+    if(subjSrc){
+      if(clipBottom){mc.save();mc.beginPath();mc.rect(0,0,W,R.boxOut[3]*H);mc.clip();}
+      if(popUsed&&popCv){
+        const t2=document.createElement('canvas');t2.width=W;t2.height=H;
+        const t2c=t2.getContext('2d');
+        drawLayer(t2c,subjSrc,subjT);
+        t2c.globalCompositeOperation='destination-in';t2c.drawImage(popCv,0,0);
+        mc.drawImage(t2,0,0);
+      }else drawLayer(mc,subjSrc,subjT);
+      if(clipBottom)mc.restore();
+    }
+    c.save();
+    // 乗算：白は下を残し、黒だけが乗る（枠の形が消えない）
+    if(!maskPaintWhite)c.globalCompositeOperation='multiply';
+    c.drawImage(mk,0,0);
+    c.restore();
   }
   if(maskPlateMode!=='auto'){
     c.fillStyle=(maskPlateMode==='black')?'#000':'#fff';
@@ -1160,6 +1203,24 @@ document.querySelectorAll('[data-mkpl]').forEach(function(b){b.onclick=function(
   document.querySelectorAll('[data-mkpl]').forEach(function(o){o.classList.remove('on');});
   b.classList.add('on');maskPlateMode=b.dataset.mkpl;render();};});
 $('#mkMarks').onchange=function(e){maskMarks=e.target.checked;render();};
+$('#mkPaintW').onchange=function(e){maskPaintWhite=e.target.checked;render();};
+function setBtnGroup(attr,val){
+  document.querySelectorAll('['+attr+']').forEach(function(o){
+    o.classList.toggle('on',o.dataset[attr.replace('data-','')]===val);});
+}
+document.querySelectorAll('[data-preset]').forEach(function(b){b.onclick=function(){
+  document.querySelectorAll('[data-preset]').forEach(function(o){o.classList.remove('on');});
+  b.classList.add('on');
+  const t=b.dataset.preset;
+  maskNameOnly=(t==='name');
+  if(t==='gm'){maskFrameBlack=false;maskPlateMode='auto';maskBoxMode='auto';maskRing=true;}
+  if(t==='rare'){maskFrameBlack=true;maskPlateMode='black';maskBoxMode='black';maskRing=false;}
+  setBtnGroup('data-mkfr',maskFrameBlack?'black':'white');
+  setBtnGroup('data-mkpl',maskPlateMode);
+  setBtnGroup('data-mkbox',maskBoxMode);
+  $('#mkRing').checked=maskRing;
+  maskMode=true;$('#mkOn').checked=true;
+  render();};});
 $('#mkRing').onchange=function(e){maskRing=e.target.checked;render();};
 $('#mkName').onchange=function(e){maskNameOnly=e.target.checked;render();};
 $('#mkText').onchange=function(e){maskText=e.target.checked;render();};
