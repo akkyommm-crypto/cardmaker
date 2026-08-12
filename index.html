@@ -166,7 +166,7 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
         </div>
         <div class="bar" style="flex-wrap:wrap">
           <label class="chk"><input type="checkbox" id="mkMarks" checked>名前・属性・星を白</label>
-          <label class="chk"><input type="checkbox" id="mkText">効果文を黒</label>
+          <label class="chk"><input type="checkbox" id="mkText" checked>効果文を黒</label>
         </div>
         <div class="bar" style="flex-wrap:wrap">
           <label class="chk"><input type="checkbox" id="mkEdge" checked>外側の帯を黒く</label>
@@ -443,7 +443,7 @@ let fi=-1,ai=-1,si=-1,pi=-1;
 let frameImg=null,W=0,H=0;
 let bgImg=null,subjImg=null;
 let bgMask=null,subjMask=null;      // 転写マスク用の黒塗り画像
-let maskMode=false,maskBoxMode='auto',maskText=false,maskFrameBlack=false,maskMarks=true;
+let maskMode=false,maskBoxMode='auto',maskText=true,maskFrameBlack=false,maskMarks=true;
 let bgT={x:0,y:0,s:1,rot:0},subjT={x:0,y:0,s:1,rot:0};
 let layer='bg';                       // いま操作している層
 function curImg(){return layer==='bg'?bgImg:subjImg;}
@@ -744,7 +744,7 @@ function composeMaskInner(c){
   // 1) カードの土台
   drawCardBase(c,maskFrameBlack?'#000':'#fff');
   // 2) 黒塗りイラスト（白い部分は透明なので土台がそのまま残る）
-  const bgSrc=bgMask||bgImg, subjSrc=subjMask||subjImg;
+  const bgSrc=bgMask, subjSrc=subjMask;   // カラーは使わない
   if(bgSrc&&win.w>0){
     c.save();c.beginPath();c.rect(win.x,win.y,win.w,win.h);c.clip();
     drawLayer(c,bgSrc,bgT);c.restore();
@@ -772,6 +772,12 @@ function composeMaskInner(c){
     c.fillRect(R.boxOut[0]*W,R.boxOut[1]*H,(R.boxOut[2]-R.boxOut[0])*W,(R.boxOut[3]-R.boxOut[1])*H);
   }
   // 4) 目印と文字
+  if(!bgSrc&&!subjSrc&&maskMode){
+    c.save();c.fillStyle=maskFrameBlack?'rgba(255,255,255,.35)':'rgba(0,0,0,.35)';
+    c.font=(H*0.022)+'px '+F.gothic;c.textAlign='center';
+    c.fillText('黒塗り画像を読み込んでください',W/2,H*0.45);
+    c.textAlign='left';c.restore();
+  }
   if(maskRing)drawCardRing(c,maskFrameBlack?'#fff':'#000');
   if(maskMarks)drawMaskMarks(c);
   if(maskText){const keep=tcol,ns=nameStyle;tcol='#000';nameStyle='black';
@@ -1203,11 +1209,11 @@ document.querySelectorAll('[data-preset]').forEach(function(b){b.onclick=functio
   maskNameOnly=(t==='name');
   if(t==='gm'){   // カード内は全部白、外側の帯だけ黒
     maskFrameBlack=false;maskPlateMode='white';maskBoxMode='white';
-    maskRing=false;maskMarks=false;maskText=false;maskEdgeBlack=true;
+    maskRing=false;maskMarks=false;maskText=true;maskEdgeBlack=true;
   }
   if(t==='rare'){ // 枠と効果欄は黒、名前・属性・星だけ白
     maskFrameBlack=true;maskPlateMode='black';maskBoxMode='black';
-    maskRing=false;maskMarks=true;maskText=false;maskEdgeBlack=true;
+    maskRing=false;maskMarks=true;maskText=true;maskEdgeBlack=true;
   }
   if(t==='name'){maskMarks=false;maskText=false;}
   $('#mkMarks').checked=maskMarks;$('#mkText').checked=maskText;
