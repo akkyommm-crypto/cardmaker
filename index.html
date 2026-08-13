@@ -153,10 +153,11 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
           <button class="btn sm" data-mkfr="black">黒</button>
         </div>
         <div class="bar">
-          <span class="chk" style="width:52px">イラスト窓</span>
-          <button class="btn sm on" data-mkwin="auto">絵のまま</button>
+          <span class="chk" style="width:52px">窓の下地</span>
+          <button class="btn sm on" data-mkwin="auto">枠と同じ</button>
           <button class="btn sm" data-mkwin="white">白</button>
           <button class="btn sm" data-mkwin="black">黒</button>
+          <label class="chk"><input type="checkbox" id="mkArtOn" checked>絵を出す</label>
         </div>
         <div class="bar">
           <span class="chk" style="width:52px">名前欄</span>
@@ -177,7 +178,9 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
           <button class="btn sm" data-mkart="black">黒</button>
         </div>
         <div class="bar" style="flex-wrap:wrap">
-          <label class="chk"><input type="checkbox" id="mkMarks" checked>名前・属性・星を白</label>
+          <label class="chk"><input type="checkbox" id="mkMarks" checked>名前を白</label>
+          <label class="chk"><input type="checkbox" id="mkIcons" checked>属性・星を白</label>
+          <label class="chk"><input type="checkbox" id="mkInv">絵を反転</label>
           <label class="chk"><input type="checkbox" id="mkText" checked>効果文を黒</label>
         </div>
         <div class="bar" style="flex-wrap:wrap">
@@ -254,6 +257,9 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
         <button class="btn sm" data-layer="subj">人物</button>
         <div class="spacer"></div>
         <button class="btn ghost sm" id="clrLayer">この絵を消す</button>
+      </div>
+      <div class="bar">
+        <label class="chk"><input type="checkbox" id="layOut">この絵を枠の外にはみ出させる</label>
       </div>
       <div class="bar"><label class="sl">大きさ<input type="range" id="sc" min="5" max="400" value="100"><b id="scv">100%</b></label></div>
       <div class="bar"><label class="sl">回転<input type="range" id="rot" min="-180" max="180" value="0"><b id="rotv">0°</b></label></div>
@@ -458,10 +464,13 @@ let bgMask=null,subjMask=null;      // 転写マスク用の黒塗り画像
 let maskMode=false,maskBoxMode='auto',maskText=true,maskFrameBlack=false,maskMarks=true;
 let bgT={x:0,y:0,s:1,rot:0},subjT={x:0,y:0,s:1,rot:0};
 let layer='bg';                       // いま操作している層
+let bgOut=false,subjOut=true;          // 窓からはみ出させるか
 function curImg(){return layer==='bg'?bgImg:subjImg;}
 function curT(){return layer==='bg'?bgT:subjT;}
+function curOut(){return layer==='bg'?bgOut:subjOut;}
 function syncPlace(){
   const t=curT();
+  const o=$('#layOut');if(o)o.checked=curOut();
   $('#sc').value=Math.round(t.s*100);$('#scv').textContent=Math.round(t.s*100)+'%';
   $('#rot').value=Math.round(t.rot);$('#rotv').textContent=Math.round(t.rot)+'°';
   $('#openIll').textContent=(layer==='bg')?'背景':'人物';
@@ -756,31 +765,48 @@ function composeMaskInner(c){
   }
   // 1) カードの土台
   drawCardBase(c,maskFrameBlack?'#000':'#fff');
-  // 2) 黒塗りイラスト（下地が黒なら白で、白なら黒で描く）
-  const bgSrc=bgMask, subjSrc=subjMask;   // カラーは使わない
-  const artCol=(maskArt==='auto') ? (maskFrameBlack?'#fff':'#000')
-                                  : (maskArt==='white'?'#fff':'#000');
-  function paintArt(src,t,clipRect){
-    const tmp=document.createElement('canvas');tmp.width=W;tmp.height=H;
-    const tc=tmp.getContext('2d');
-    if(clipRect){tc.save();tc.beginPath();
-      tc.rect(clipRect[0],clipRect[1],clipRect[2],clipRect[3]);tc.clip();}
-    drawLayer(tc,src,t);
-    if(clipRect)tc.restore();
-    if(popUsed&&popCv&&src===subjSrc){
-      tc.globalCompositeOperation='destination-in';tc.drawImage(popCv,0,0);
-    }
-    tc.globalCompositeOperation='source-in';       // 形はそのまま色だけ差し替え
-    tc.fillStyle=artCol;tc.fillRect(0,0,W,H);
-    c.drawImage(tmp,0,0);
-  }
-  if(bgSrc&&win.w>0)paintArt(bgSrc,bgT,[win.x,win.y,win.w,win.h]);
-  if(subjSrc)paintArt(subjSrc,subjT,clipBottom?[0,0,W,R.boxOut[3]*H]:null);
-  // 3) イラスト窓・名前欄・効果欄を上から塗りつぶす
+  // 2) イラスト窓の下地 → その上に黒塗りイラスト
   if(maskWinMode!=='auto'&&win.w>0){
     c.fillStyle=(maskWinMode==='black')?'#000':'#fff';
     c.fillRect(win.x,win.y,win.w,win.h);
   }
+  const bgSrc=maskArtOn?bgMask:null, subjSrc=maskArtOn?subjMask:null;
+  const winBase=(maskWinMode!=='auto')?maskWinMode:(maskFrameBlack?'black':'white');
+  const artCol=(maskArt==='auto') ? (winBase==='black'?'#fff':'#000')
+                                  : (maskArt==='white'?'#fff':'#000');
+  function paintArt(src,t,clipRect){
+    const tmp=document.createElement('canvas');tmp.width=W;tmp.height=H;
+    const tc=tmp.getContext('2d');
+    if(maskArtInv){
+      // 反転：絵の白い部分（＝透明部分）を塗る
+      const r=clipRect||[win.x,win.y,win.w,win.h];
+      tc.fillStyle=artCol;tc.fillRect(r[0],r[1],r[2],r[3]);
+      const hole=document.createElement('canvas');hole.width=W;hole.height=H;
+      const hc=hole.getContext('2d');
+      drawLayer(hc,src,t);
+      tc.globalCompositeOperation='destination-out';tc.drawImage(hole,0,0);
+      tc.globalCompositeOperation='source-over';
+      if(popUsed&&popCv&&src===subjSrc){
+        tc.globalCompositeOperation='destination-in';tc.drawImage(popCv,0,0);
+      }
+    }else{
+      if(clipRect){tc.save();tc.beginPath();
+        tc.rect(clipRect[0],clipRect[1],clipRect[2],clipRect[3]);tc.clip();}
+      drawLayer(tc,src,t);
+      if(clipRect)tc.restore();
+      if(popUsed&&popCv&&src===subjSrc){
+        tc.globalCompositeOperation='destination-in';tc.drawImage(popCv,0,0);
+      }
+      tc.globalCompositeOperation='source-in';     // 形はそのまま色だけ差し替え
+      tc.fillStyle=artCol;tc.fillRect(0,0,W,H);
+    }
+    c.drawImage(tmp,0,0);
+  }
+  const winRect=[win.x,win.y,win.w,win.h];
+  const outRect=clipBottom?[0,0,W,R.boxOut[3]*H]:null;
+  if(bgSrc)paintArt(bgSrc,bgT,bgOut?outRect:winRect);
+  if(subjSrc)paintArt(subjSrc,subjT,subjOut?outRect:winRect);
+  // 3) 名前欄・効果欄を上から塗りつぶす
   if(maskPlateMode!=='auto'){
     c.fillStyle=(maskPlateMode==='black')?'#000':'#fff';
     c.fillRect(R.plateOut[0]*W,R.plateOut[1]*H,
@@ -806,12 +832,12 @@ function composeMaskInner(c){
 function drawMaskMarks(c){
   c.save();c.fillStyle='#fff';
   // 属性の丸
-  if(ai>=0&&attrs[ai]){
+  if(maskMarkIcons&&ai>=0&&attrs[ai]){
     const r=R.attr.r*W*attrSz;
     c.beginPath();c.arc(attrX*W,attrY*H,r,0,7);c.fill();
   }
   // 星の丸
-  if(si>=0&&stars[si]&&stN>0){
+  if(maskMarkIcons&&si>=0&&stars[si]&&stN>0){
     const r=R.star.r*W*stSz,gap=R.star.gap*W*stG;
     for(let i=0;i<stN;i++){
       const cx=stLeft?(1-R.star.right)*W+i*gap:R.star.right*W-i*gap;
@@ -874,50 +900,64 @@ function drawPanel(c,r,alpha,tRatio){
 function compose(c){
   c.clearRect(0,0,W,H);
   if(maskMode){composeMask(c);return;}
-  if(bgImg&&win.w>0){
+
+  // 窓の中に収める層
+  const clipped=[];
+  if(bgImg&&!bgOut)clipped.push([bgImg,bgT]);
+  if(subjImg&&!subjOut)clipped.push([subjImg,subjT]);
+  if(clipped.length&&win.w>0){
     if($('#winAlpha').checked&&holeCv){
       if(!work2){work2=document.createElement('canvas');work2.width=W;work2.height=H;}
       const w2=work2.getContext('2d');
       w2.globalCompositeOperation='source-over';w2.clearRect(0,0,W,H);
-      w2.save();w2.beginPath();w2.rect(win.x,win.y,win.w,win.h);w2.clip();drawIll(w2);w2.restore();
+      w2.save();w2.beginPath();w2.rect(win.x,win.y,win.w,win.h);w2.clip();
+      clipped.forEach(function(p){drawLayer(w2,p[0],p[1]);});w2.restore();
       w2.globalCompositeOperation='destination-in';w2.drawImage(holeCv,0,0);
       w2.globalCompositeOperation='source-over';
       c.drawImage(work2,0,0);
     }else{
-      c.save();c.beginPath();c.rect(win.x,win.y,win.w,win.h);c.clip();drawIll(c);c.restore();
+      c.save();c.beginPath();c.rect(win.x,win.y,win.w,win.h);c.clip();
+      clipped.forEach(function(p){drawLayer(c,p[0],p[1]);});c.restore();
     }
   }
+
+  // 枠
   if(frameImg){c.globalAlpha=frameOp;c.drawImage(frameImg,0,0,W,H);c.globalAlpha=1;}
-  if(starsUnder)drawStars(c);              // イラストの下に星
-  // 人物レイヤー（枠の上）。はみ出しマスクを塗っていればそこだけ、無ければ全部出す
-  if(subjImg&&clipBottom){c.save();c.beginPath();c.rect(0,0,W,R.boxOut[3]*H);c.clip();}
-  if(subjImg&&glowAmt>0){
-    const wc=workCv.getContext('2d');
-    wc.globalCompositeOperation='source-over';wc.clearRect(0,0,W,H);
-    drawLayer(wc,subjImg,subjT);
-    if(popUsed&&popCv){wc.globalCompositeOperation='destination-in';wc.drawImage(popCv,0,0);
-      wc.globalCompositeOperation='source-over';}
+  if(starsUnder)drawStars(c);
+
+  // 枠の外へ出す層
+  const over=[];
+  if(bgImg&&bgOut)over.push([bgImg,bgT]);
+  if(subjImg&&subjOut)over.push([subjImg,subjT]);
+  if(over.length){
     c.save();
-    c.shadowColor='rgba(255,246,214,'+glowAmt+')';
-    for(const b of [W*0.010,W*0.024,W*0.045]){c.shadowBlur=b;c.drawImage(workCv,0,0);}
-    c.restore();
-  }
-  if(subjImg){
-    if(popUsed&&popCv){
+    if(clipBottom){c.beginPath();c.rect(0,0,W,R.boxOut[3]*H);c.clip();}
+    if(glowAmt>0&&workCv){
       const wc=workCv.getContext('2d');
       wc.globalCompositeOperation='source-over';wc.clearRect(0,0,W,H);
-      drawLayer(wc,subjImg,subjT);
+      over.forEach(function(p){drawLayer(wc,p[0],p[1]);});
+      if(popUsed&&popCv){wc.globalCompositeOperation='destination-in';wc.drawImage(popCv,0,0);
+        wc.globalCompositeOperation='source-over';}
+      c.save();c.shadowColor='rgba(255,246,214,'+glowAmt+')';
+      for(const b of [W*0.010,W*0.024,W*0.045]){c.shadowBlur=b;c.drawImage(workCv,0,0);}
+      c.restore();
+    }
+    if(popUsed&&popCv&&workCv){
+      const wc=workCv.getContext('2d');
+      wc.globalCompositeOperation='source-over';wc.clearRect(0,0,W,H);
+      over.forEach(function(p){drawLayer(wc,p[0],p[1]);});
       wc.globalCompositeOperation='destination-in';wc.drawImage(popCv,0,0);
       wc.globalCompositeOperation='source-over';
       c.drawImage(workCv,0,0);
-    }else drawLayer(c,subjImg,subjT);
+    }else over.forEach(function(p){drawLayer(c,p[0],p[1]);});
+    c.restore();
   }
-  if(subjImg&&clipBottom)c.restore();
+
   if(panelBox)  drawPanel(c,R.boxOut,  panelBoxA,  0.013);
   if(panelPlate)drawPanel(c,R.plateOut,panelPlateA,0.011);
   drawAttr(c);if(!starsUnder)drawStars(c);drawProp(c);
   if(kind!=='st'&&$('#drawSep').checked){
-    c.strokeStyle=tcol==='#fff'?'rgba(20,20,20,.85)':'rgba(20,20,20,.85)';
+    c.strokeStyle='rgba(20,20,20,.85)';
     c.lineWidth=Math.max(2,H*0.0021);
     c.beginPath();c.moveTo(R.sep.x0*W,R.sep.y*H);c.lineTo(R.sep.x1*W,R.sep.y*H);c.stroke();
   }
@@ -1225,16 +1265,18 @@ document.querySelectorAll('[data-preset]').forEach(function(b){b.onclick=functio
   const t=b.dataset.preset;
   maskNameOnly=(t==='name');
   if(t==='gm'){   // カード内は全部白、外側の帯だけ黒
-    maskFrameBlack=false;maskPlateMode='white';maskBoxMode='white';maskWinMode='auto';maskArt='auto';
-    maskRing=false;maskMarks=false;maskText=true;maskEdgeBlack=true;
+    maskFrameBlack=false;maskPlateMode='white';maskBoxMode='white';maskWinMode='auto';maskArt='auto';maskArtOn=true;maskArtInv=false;
+    maskRing=false;maskMarks=false;maskMarkIcons=true;maskText=true;maskEdgeBlack=true;
   }
   if(t==='rare'){ // 名前・属性・星・イラスト窓だけ白、ほかは黒
-    maskFrameBlack=true;maskPlateMode='black';maskBoxMode='black';maskWinMode='white';maskArt='auto';
+    maskFrameBlack=true;maskPlateMode='black';maskBoxMode='black';maskWinMode='white';maskArt='auto';maskArtOn=false;
     maskRing=false;maskMarks=true;maskText=false;maskEdgeBlack=true;
   }
-  if(t==='name'){maskMarks=false;maskText=false;maskWinMode='auto';}
+  if(t==='name'){maskMarks=false;maskMarkIcons=false;maskText=false;maskWinMode='auto';maskArtInv=false;}
   $('#mkMarks').checked=maskMarks;$('#mkText').checked=maskText;
-  $('#mkEdge').checked=maskEdgeBlack;
+  $('#mkEdge').checked=maskEdgeBlack;$('#mkArtOn').checked=maskArtOn;
+  $('#mkIcons').checked=maskMarkIcons;$('#mkInv').checked=maskArtInv;
+  setBtnGroup('data-mkart',maskArt);
   setBtnGroup('data-mkfr',maskFrameBlack?'black':'white');
   setBtnGroup('data-mkwin',maskWinMode);
   setBtnGroup('data-mkart',maskArt);
@@ -1245,6 +1287,9 @@ document.querySelectorAll('[data-preset]').forEach(function(b){b.onclick=functio
   render();};});
 $('#mkRing').onchange=function(e){maskRing=e.target.checked;render();};
 $('#mkEdge').onchange=function(e){maskEdgeBlack=e.target.checked;render();};
+$('#mkArtOn').onchange=function(e){maskArtOn=e.target.checked;render();};
+$('#mkIcons').onchange=function(e){maskMarkIcons=e.target.checked;render();};
+$('#mkInv').onchange=function(e){maskArtInv=e.target.checked;render();};
 $('#mkName').onchange=function(e){maskNameOnly=e.target.checked;render();};
 $('#mkText').onchange=function(e){maskText=e.target.checked;render();};
 let mkTarget='bg';
@@ -1284,6 +1329,10 @@ $('#fMask2').onchange=function(e){
     maskMode=true;$('#mkOn').checked=true;syncPlace();render();
   };
   im.src=URL.createObjectURL(f);e.target.value='';
+};
+$('#layOut').onchange=function(e){
+  if(layer==='bg')bgOut=e.target.checked; else subjOut=e.target.checked;
+  render();
 };
 $('#clrLayer').onclick=function(){
   if(layer==='bg')bgImg=null; else subjImg=null;
@@ -1451,7 +1500,7 @@ sl('#pnBoxA','#pnBoxAv',function(v){panelBoxA=v/100;},function(v){return v+'%';}
 sl('#pnPlateA','#pnPlateAv',function(v){panelPlateA=v/100;},function(v){return v+'%';});
 $('#popAll').onclick=function(){
   if(!W)return;
-  if(!subjImg){alert('「全面に出す」は人物レイヤー用です。配置タブで人物の絵を読み込んでください。\n背景はイラスト窓の中にだけ表示されます。');return;}
+  if(!(bgImg&&bgOut)&&!(subjImg&&subjOut)){alert('はみ出す設定の絵がありません。配置タブで「枠の外にはみ出させる」にチェックしてください。');return;}
   if(!popCtx)initPop();
   snap();popCtx.globalCompositeOperation='source-over';
   popCtx.fillStyle='#fff';popCtx.fillRect(0,0,W,H);popUsed=true;
