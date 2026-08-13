@@ -171,6 +171,12 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
           <button class="btn sm" data-mkbox="black">黒</button>
         </div>
         <div class="bar" style="flex-wrap:wrap">
+          <span class="chk" style="width:52px">絵の色</span>
+          <button class="btn sm on" data-mkart="auto">自動</button>
+          <button class="btn sm" data-mkart="white">白</button>
+          <button class="btn sm" data-mkart="black">黒</button>
+        </div>
+        <div class="bar" style="flex-wrap:wrap">
           <label class="chk"><input type="checkbox" id="mkMarks" checked>名前・属性・星を白</label>
           <label class="chk"><input type="checkbox" id="mkText" checked>効果文を黒</label>
         </div>
@@ -750,24 +756,26 @@ function composeMaskInner(c){
   }
   // 1) カードの土台
   drawCardBase(c,maskFrameBlack?'#000':'#fff');
-  // 2) 黒塗りイラスト（白い部分は透明なので土台がそのまま残る）
+  // 2) 黒塗りイラスト（下地が黒なら白で、白なら黒で描く）
   const bgSrc=bgMask, subjSrc=subjMask;   // カラーは使わない
-  if(bgSrc&&win.w>0){                      // 背景は必ずイラスト窓の中だけ
-    c.save();c.beginPath();c.rect(win.x,win.y,win.w,win.h);c.clip();
-    drawLayer(c,bgSrc,bgT);c.restore();
+  const artCol=(maskArt==='auto') ? (maskFrameBlack?'#fff':'#000')
+                                  : (maskArt==='white'?'#fff':'#000');
+  function paintArt(src,t,clipRect){
+    const tmp=document.createElement('canvas');tmp.width=W;tmp.height=H;
+    const tc=tmp.getContext('2d');
+    if(clipRect){tc.save();tc.beginPath();
+      tc.rect(clipRect[0],clipRect[1],clipRect[2],clipRect[3]);tc.clip();}
+    drawLayer(tc,src,t);
+    if(clipRect)tc.restore();
+    if(popUsed&&popCv&&src===subjSrc){
+      tc.globalCompositeOperation='destination-in';tc.drawImage(popCv,0,0);
+    }
+    tc.globalCompositeOperation='source-in';       // 形はそのまま色だけ差し替え
+    tc.fillStyle=artCol;tc.fillRect(0,0,W,H);
+    c.drawImage(tmp,0,0);
   }
-  if(subjSrc){
-    c.save();
-    if(clipBottom){c.beginPath();c.rect(0,0,W,R.boxOut[3]*H);c.clip();}
-    if(popUsed&&popCv){
-      const t2=document.createElement('canvas');t2.width=W;t2.height=H;
-      const t2c=t2.getContext('2d');
-      drawLayer(t2c,subjSrc,subjT);
-      t2c.globalCompositeOperation='destination-in';t2c.drawImage(popCv,0,0);
-      c.drawImage(t2,0,0);
-    }else drawLayer(c,subjSrc,subjT);
-    c.restore();
-  }
+  if(bgSrc&&win.w>0)paintArt(bgSrc,bgT,[win.x,win.y,win.w,win.h]);
+  if(subjSrc)paintArt(subjSrc,subjT,clipBottom?[0,0,W,R.boxOut[3]*H]:null);
   // 3) イラスト窓・名前欄・効果欄を上から塗りつぶす
   if(maskWinMode!=='auto'&&win.w>0){
     c.fillStyle=(maskWinMode==='black')?'#000':'#fff';
@@ -1197,6 +1205,9 @@ document.querySelectorAll('[data-mkbox]').forEach(function(b){b.onclick=function
 document.querySelectorAll('[data-mkfr]').forEach(function(b){b.onclick=function(){
   document.querySelectorAll('[data-mkfr]').forEach(function(o){o.classList.remove('on');});
   b.classList.add('on');maskFrameBlack=(b.dataset.mkfr==='black');render();};});
+document.querySelectorAll('[data-mkart]').forEach(function(b){b.onclick=function(){
+  document.querySelectorAll('[data-mkart]').forEach(function(o){o.classList.remove('on');});
+  b.classList.add('on');maskArt=b.dataset.mkart;render();};});
 document.querySelectorAll('[data-mkwin]').forEach(function(b){b.onclick=function(){
   document.querySelectorAll('[data-mkwin]').forEach(function(o){o.classList.remove('on');});
   b.classList.add('on');maskWinMode=b.dataset.mkwin;render();};});
@@ -1214,11 +1225,11 @@ document.querySelectorAll('[data-preset]').forEach(function(b){b.onclick=functio
   const t=b.dataset.preset;
   maskNameOnly=(t==='name');
   if(t==='gm'){   // カード内は全部白、外側の帯だけ黒
-    maskFrameBlack=false;maskPlateMode='white';maskBoxMode='white';maskWinMode='auto';
+    maskFrameBlack=false;maskPlateMode='white';maskBoxMode='white';maskWinMode='auto';maskArt='auto';
     maskRing=false;maskMarks=false;maskText=true;maskEdgeBlack=true;
   }
   if(t==='rare'){ // 名前・属性・星・イラスト窓だけ白、ほかは黒
-    maskFrameBlack=true;maskPlateMode='black';maskBoxMode='black';maskWinMode='white';
+    maskFrameBlack=true;maskPlateMode='black';maskBoxMode='black';maskWinMode='white';maskArt='auto';
     maskRing=false;maskMarks=true;maskText=false;maskEdgeBlack=true;
   }
   if(t==='name'){maskMarks=false;maskText=false;maskWinMode='auto';}
@@ -1226,6 +1237,7 @@ document.querySelectorAll('[data-preset]').forEach(function(b){b.onclick=functio
   $('#mkEdge').checked=maskEdgeBlack;
   setBtnGroup('data-mkfr',maskFrameBlack?'black':'white');
   setBtnGroup('data-mkwin',maskWinMode);
+  setBtnGroup('data-mkart',maskArt);
   setBtnGroup('data-mkpl',maskPlateMode);
   setBtnGroup('data-mkbox',maskBoxMode);
   $('#mkRing').checked=maskRing;
