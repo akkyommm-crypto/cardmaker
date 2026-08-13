@@ -153,6 +153,12 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
           <button class="btn sm" data-mkfr="black">黒</button>
         </div>
         <div class="bar">
+          <span class="chk" style="width:52px">イラスト窓</span>
+          <button class="btn sm on" data-mkwin="auto">絵のまま</button>
+          <button class="btn sm" data-mkwin="white">白</button>
+          <button class="btn sm" data-mkwin="black">黒</button>
+        </div>
+        <div class="bar">
           <span class="chk" style="width:52px">名前欄</span>
           <button class="btn sm on" data-mkpl="auto">枠と同じ</button>
           <button class="btn sm" data-mkpl="white">白</button>
@@ -762,7 +768,11 @@ function composeMaskInner(c){
     }else drawLayer(c,subjSrc,subjT);
     c.restore();
   }
-  // 3) 名前欄・効果欄を上から塗りつぶす
+  // 3) イラスト窓・名前欄・効果欄を上から塗りつぶす
+  if(maskWinMode!=='auto'&&win.w>0){
+    c.fillStyle=(maskWinMode==='black')?'#000':'#fff';
+    c.fillRect(win.x,win.y,win.w,win.h);
+  }
   if(maskPlateMode!=='auto'){
     c.fillStyle=(maskPlateMode==='black')?'#000':'#fff';
     c.fillRect(R.plateOut[0]*W,R.plateOut[1]*H,
@@ -1187,6 +1197,9 @@ document.querySelectorAll('[data-mkbox]').forEach(function(b){b.onclick=function
 document.querySelectorAll('[data-mkfr]').forEach(function(b){b.onclick=function(){
   document.querySelectorAll('[data-mkfr]').forEach(function(o){o.classList.remove('on');});
   b.classList.add('on');maskFrameBlack=(b.dataset.mkfr==='black');render();};});
+document.querySelectorAll('[data-mkwin]').forEach(function(b){b.onclick=function(){
+  document.querySelectorAll('[data-mkwin]').forEach(function(o){o.classList.remove('on');});
+  b.classList.add('on');maskWinMode=b.dataset.mkwin;render();};});
 document.querySelectorAll('[data-mkpl]').forEach(function(b){b.onclick=function(){
   document.querySelectorAll('[data-mkpl]').forEach(function(o){o.classList.remove('on');});
   b.classList.add('on');maskPlateMode=b.dataset.mkpl;render();};});
@@ -1201,17 +1214,18 @@ document.querySelectorAll('[data-preset]').forEach(function(b){b.onclick=functio
   const t=b.dataset.preset;
   maskNameOnly=(t==='name');
   if(t==='gm'){   // カード内は全部白、外側の帯だけ黒
-    maskFrameBlack=false;maskPlateMode='white';maskBoxMode='white';
+    maskFrameBlack=false;maskPlateMode='white';maskBoxMode='white';maskWinMode='auto';
     maskRing=false;maskMarks=false;maskText=true;maskEdgeBlack=true;
   }
-  if(t==='rare'){ // 枠と効果欄は黒、名前・属性・星だけ白
-    maskFrameBlack=true;maskPlateMode='black';maskBoxMode='black';
-    maskRing=false;maskMarks=true;maskText=true;maskEdgeBlack=true;
+  if(t==='rare'){ // 名前・属性・星・イラスト窓だけ白、ほかは黒
+    maskFrameBlack=true;maskPlateMode='black';maskBoxMode='black';maskWinMode='white';
+    maskRing=false;maskMarks=true;maskText=false;maskEdgeBlack=true;
   }
-  if(t==='name'){maskMarks=false;maskText=false;}
+  if(t==='name'){maskMarks=false;maskText=false;maskWinMode='auto';}
   $('#mkMarks').checked=maskMarks;$('#mkText').checked=maskText;
   $('#mkEdge').checked=maskEdgeBlack;
   setBtnGroup('data-mkfr',maskFrameBlack?'black':'white');
+  setBtnGroup('data-mkwin',maskWinMode);
   setBtnGroup('data-mkpl',maskPlateMode);
   setBtnGroup('data-mkbox',maskBoxMode);
   $('#mkRing').checked=maskRing;
